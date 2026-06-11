@@ -1,0 +1,7 @@
+tunevault-frontend/node_modules/
+tunevault-frontend/dist/
+tunevault-frontend/build/
+tunevault-frontend/.env
+tunevault-frontend/.env.local
+tunevault-frontend/.vscode/
+*.log
