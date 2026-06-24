@@ -1,228 +1,177 @@
 import { useEffect, useState } from "react";
-import { Play, Heart } from "lucide-react";
-import { usePlayerStore } from "../../stores/playerStore";
-import { mediaService } from "../../api";
+import {
+  Heart,
+  Share2,
+  Edit2,
+  Trash2,
+  X,
+  Image as ImageIcon,
+  Play,
+  ListPlus,
+} from "lucide-react";
+import { mediaService, albumService } from "../../api";
 import type { MediaItemDto } from "../../api/types/media";
+import type { AlbumDto } from "../../api/types/album";
 import ShareModal from "../../components/share/ShareModal";
+import AddToPlaylistModal from "../../components/playlist/AddToPlaylistModal";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../stores/authStore";
+import toast from "react-hot-toast";
+import { useMediaActions } from "../../hooks/useMediaActions";
+import { formatDuration } from "../../utils/format";
 
 const HomePage = () => {
   const [trending, setTrending] = useState<MediaItemDto[]>([]);
+  const [newSongs, setNewSongs] = useState<MediaItemDto[]>([]);
+  const [albums, setAlbums] = useState<AlbumDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const playTrack = usePlayerStore((state) => state.playTrack);
+  const {
+    playSong,
+    toggleLike,
+    deleteSong,
+    updateSong,
+    isUpdating: isUpdatingSong,
+  } = useMediaActions();
   const navigate = useNavigate();
+  const currentUser = useAuthStore((state) => state.user);
 
   const [shareModal, setShareModal] = useState<{
     isOpen: boolean;
-    media: MediaItemDto | null;
-  }>({ isOpen: false, media: null });
+    mediaItemId?: number;
+    title: string;
+  }>({ isOpen: false, title: "" });
 
-  const [likedSongs, setLikedSongs] = useState<number[]>([]);
+  const [playlistModal, setPlaylistModal] = useState<{
+    isOpen: boolean;
+    mediaItemId: number | null;
+    title: string;
+  }>({ isOpen: false, mediaItemId: null, title: "" });
+
+  const [likedSongIds, setLikedSongIds] = useState<number[]>([]);
+
+  // Edit Song Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSong, setEditingSong] = useState<MediaItemDto | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editArtistName, setEditArtistName] = useState("");
+  const [editAlbumId, setEditAlbumId] = useState("");
+  const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
+  const [editThumbnailPreview, setEditThumbnailPreview] = useState("");
+
+  const fetchHomeData = async () => {
+    setLoading(true);
+    try {
+      const [mediaData, albumsData, favoritesData, allSongsData] =
+        await Promise.all([
+          mediaService.getTrendingMedia(),
+          albumService.getAlbums(),
+          mediaService.getFavorites(),
+          mediaService.searchMedia(""), // get all songs to sort for new music
+        ]);
+      setTrending(mediaData);
+      setAlbums(albumsData);
+      setLikedSongIds(favoritesData.map((f) => f.mediaItemId));
+
+      // Nhạc mới: sort by mediaItemId descending
+      const sortedNew = [...allSongsData]
+        .sort((a, b) => b.mediaItemId - a.mediaItemId)
+        .slice(0, 6);
+      setNewSongs(sortedNew);
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể tải danh sách bài hát");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchTrending = async () => {
-      setLoading(true);
-
-      setTrending([
-        {
-          mediaItemId: 1,
-          title: "Nơi Này Có Anh",
-          artistId: 1,
-          artistName: "Sơn Tùng M-TP",
-          durationSeconds: 278,
-          playCount: 1250000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/noinaycoanh.png",
-          hasVideo: true,
-          audioUrl: "/audio/noinaycoanh.mp3",
-        },
-        {
-          mediaItemId: 8,
-          title: "Lạ Lùng",
-          artistId: 8,
-          artistName: "Vũ.",
-          durationSeconds: 260,
-          playCount: 980000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/lalung.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/lalung.mp3",
-        },
-        {
-          mediaItemId: 3,
-          title: "Mang Tiền Về Cho Mẹ",
-          artistId: 3,
-          artistName: "Đen",
-          durationSeconds: 407,
-          playCount: 2100000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/mangtienvechome.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/mangtienvechome.mp3",
-        },
-        {
-          mediaItemId: 2,
-          title: "See Tình",
-          artistId: 2,
-          artistName: "Hoàng Thùy Linh",
-          durationSeconds: 207,
-          playCount: 870000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/seetinh.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/seetinh.mp3",
-        },
-        {
-          mediaItemId: 10,
-          title: "Sau Tất Cả",
-          artistId: 10,
-          artistName: "ERIK",
-          durationSeconds: 296,
-          playCount: 760000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/sautatca.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/sautatca.mp3",
-        },
-        {
-          mediaItemId: 15,
-          title: "Có Hẹn Với Thanh Xuân",
-          artistId: 15,
-          artistName: "MONSTAR, GREY D",
-          durationSeconds: 245,
-          playCount: 1450000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/cohenvoithanhxuan.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/cohenvoithanhxuan.mp3",
-        },
-        {
-          mediaItemId: 16,
-          title: "Come My Way",
-          artistId: 16,
-          artistName: "Sơn Tùng MTP",
-          durationSeconds: 268,
-          playCount: 920000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/comemyway.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/comemyway.mp3",
-        },
-        {
-          mediaItemId: 17,
-          title: "Em Thua Cô Ta",
-          artistId: 17,
-          artistName: "Min Quỳnh Anh",
-          durationSeconds: 232,
-          playCount: 1100000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/emthuacota.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/emthuacota.mp3",
-        },
-        {
-          mediaItemId: 18,
-          title: "Không Thể Say",
-          artistId: 1,
-          artistName: "HIEUTHUHAI",
-          durationSeconds: 255,
-          playCount: 1850000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/khongthesay.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/khongthesay.mp3",
-        },
-        {
-          mediaItemId: 19,
-          title: "Waiting For You",
-          artistId: 19,
-          artistName: "MONO",
-          durationSeconds: 241,
-          playCount: 1350000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/waitingforyou.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/waitingforyou.mp3",
-        },
-        {
-          mediaItemId: 20,
-          title: "Có Chàng Trai Viết Lên Cây",
-          artistId: 20,
-          artistName: "Phan Mạnh Quỳnh",
-          durationSeconds: 273,
-          playCount: 780000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/cochangtrai.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/cochangtrai.mp3",
-        },
-        {
-          mediaItemId: 21,
-          title: "Thiệp Hồng Sai Tên",
-          artistId: 21,
-          artistName: "Nguyễn Thành Đạt",
-          durationSeconds: 238,
-          playCount: 950000,
-          visibility: "Public",
-          mediaType: "Audio",
-          thumbnailUrl: "/image/thiephongsaiten.jpg",
-          hasVideo: true,
-          audioUrl: "/audio/thiephongsaiten.mp3",
-        },
-      ]);
-      setLoading(false);
-    };
-
-    fetchTrending();
+    fetchHomeData();
   }, []);
 
-  const handlePlay = (media: any) => {
-    const track = {
-      id: media.mediaItemId,
+  const handlePlay = (media: MediaItemDto, currentList: MediaItemDto[]) => {
+    playSong(media, currentList);
+  };
+
+  const openShareModal = (media: MediaItemDto) => {
+    setShareModal({
+      isOpen: true,
+      mediaItemId: media.mediaItemId,
       title: media.title,
-      artist: media.artistName || "Unknown Artist",
-      duration: media.durationSeconds,
-      thumbnailUrl: media.thumbnailUrl,
-      audioUrl: media.audioUrl || mediaService.getStreamUrl(media.mediaItemId),
-    };
-    playTrack(track);
+    });
   };
 
-  const openShareModal = (media: any) => {
-    setShareModal({ isOpen: true, media });
+  const handleToggleLike = async (mediaItemId: number) => {
+    const isLiked = await toggleLike(mediaItemId);
+    if (isLiked !== null) {
+      if (isLiked) {
+        setLikedSongIds((prev) => [...prev, mediaItemId]);
+      } else {
+        setLikedSongIds((prev) => prev.filter((id) => id !== mediaItemId));
+      }
+    }
   };
 
-  const toggleLike = (mediaItemId: number) => {
-    setLikedSongs((prev) =>
-      prev.includes(mediaItemId)
-        ? prev.filter((id) => id !== mediaItemId)
-        : [...prev, mediaItemId],
+  const handleDeleteSong = async (id: number) => {
+    const deleted = await deleteSong(
+      id,
+      "Bạn có chắc chắn muốn xóa bài hát này?",
     );
+    if (deleted) {
+      fetchHomeData();
+    }
   };
 
-  // AI Gợi ý nhạc thông minh
-  const getRecommendedSongs = () => {
-    if (likedSongs.length === 0) {
+  const openEditModal = (song: MediaItemDto) => {
+    setEditingSong(song);
+    setEditTitle(song.title);
+    setEditArtistName(song.artistName || "");
+    setEditAlbumId(song.albumId?.toString() || "");
+    setEditThumbnailPreview(song.thumbnailUrl || "");
+    setEditThumbnailFile(null);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateSong = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSong) return;
+    const updated = await updateSong(editingSong.mediaItemId, {
+      title: editTitle,
+      artist: editArtistName,
+      albumId: editAlbumId,
+      thumbnail: editThumbnailFile,
+    });
+    if (updated) {
+      setShowEditModal(false);
+      fetchHomeData();
+    }
+  };
+
+  const handleEditThumbnailChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Chỉ chấp nhận file ảnh");
+        return;
+      }
+      setEditThumbnailFile(file);
+      setEditThumbnailPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const getRecommendedSongs = (): MediaItemDto[] => {
+    if (likedSongIds.length === 0) {
       return [...trending].sort(() => 0.5 - Math.random()).slice(0, 6);
     }
-
+    // Simple similarity sorting based on liked artists
     const likedArtists = trending
-      .filter((song) => likedSongs.includes(song.mediaItemId))
+      .filter((song) => likedSongIds.includes(song.mediaItemId))
       .map((song) => song.artistName);
 
     let recommendations = trending.filter(
-      (song) => !likedSongs.includes(song.mediaItemId),
+      (song) => !likedSongIds.includes(song.mediaItemId),
     );
 
     recommendations = recommendations.sort((a, b) => {
@@ -234,16 +183,157 @@ const HomePage = () => {
     return recommendations.slice(0, 6);
   };
 
+  const renderTrackList = (list: MediaItemDto[]) => {
+    return (
+      <div className="space-y-2">
+        {list.map((song, index) => {
+          const isOwner = currentUser?.id === song.ownerUserId;
+          return (
+            <div
+              key={song.mediaItemId}
+              className="flex items-center justify-between p-4 rounded-xl hover:bg-[#282828] cursor-pointer group transition-colors bg-[#181818]"
+              onClick={() => handlePlay(song, list)}
+            >
+              {/* Format: (ảnh thumbnail / tên bài hát - ca sĩ / tên người đăng) */}
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="w-6 text-gray-400 group-hover:text-white font-mono text-center">
+                  {index + 1}
+                </div>
+                <div className="w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-[#3a3a3a] flex items-center justify-center">
+                  {song.thumbnailUrl ? (
+                    <img
+                      src={song.thumbnailUrl}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl text-gray-500">♪</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-white truncate text-base">
+                    {song.title} - {song.artistName || "Unknown Artist"}
+                  </p>
+                  <p className="text-sm text-gray-400 truncate">
+                    Người đăng: {song.ownerDisplayName || "Hệ thống"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 text-gray-400">
+                <span className="text-sm hidden sm:block mr-2">
+                  {formatDuration(song.durationSeconds)}
+                </span>
+
+                {song.hasVideo && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/video/${song.mediaItemId}`);
+                    }}
+                    className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-500 rounded-full text-white"
+                  >
+                    Video
+                  </button>
+                )}
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openShareModal(song);
+                  }}
+                  className="p-2 hover:bg-[#3a3a3a] rounded-full hover:text-white transition"
+                  title="Chia sẻ"
+                >
+                  <Share2 size={18} />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleLike(song.mediaItemId);
+                  }}
+                  className="p-2 hover:bg-[#3a3a3a] rounded-full transition"
+                >
+                  <Heart
+                    size={18}
+                    className={
+                      likedSongIds.includes(song.mediaItemId)
+                        ? "text-red-500 fill-red-500"
+                        : "text-gray-400"
+                    }
+                  />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPlaylistModal({
+                      isOpen: true,
+                      mediaItemId: song.mediaItemId,
+                      title: song.title,
+                    });
+                  }}
+                  className="p-2 hover:bg-[#3a3a3a] rounded-full hover:text-white transition"
+                  title="Thêm vào playlist"
+                >
+                  <ListPlus size={18} />
+                </button>
+
+                {isOwner && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditModal(song);
+                      }}
+                      className="p-2 hover:bg-[#3a3a3a] hover:text-green-500 rounded-full transition"
+                      title="Sửa bài hát"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSong(song.mediaItemId);
+                      }}
+                      className="p-2 hover:bg-red-950 hover:text-red-500 rounded-full transition"
+                      title="Xóa bài hát"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePlay(song, list);
+                  }}
+                  className="p-2 hover:text-white hover:bg-[#3a3a3a] rounded-full"
+                >
+                  <Play size={18} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="aspect-square bg-[#282828] rounded-2xl mb-4" />
-            <div className="h-4 bg-[#282828] rounded w-3/4 mb-2" />
-            <div className="h-3 bg-[#282828] rounded w-1/2" />
-          </div>
-        ))}
+      <div className="space-y-8">
+        <div className="space-y-4">
+          <div className="animate-pulse h-10 bg-[#282828] rounded w-1/4 mb-4" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="animate-pulse bg-[#181818] h-20 rounded-xl w-full"
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -251,202 +341,196 @@ const HomePage = () => {
   const recommendedSongs = getRecommendedSongs();
 
   return (
-    <div>
-      {/* Trending Section */}
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold mb-2">TRENDING</h1>
-        <p className="text-gray-400">Những bài hát đang được nghe nhiều nhất</p>
+    <div className="space-y-12">
+      {/* 1. Trending Section */}
+      <div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">TRENDING</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Những bài hát đang được nghe nhiều nhất
+          </p>
+        </div>
+        {trending.length === 0 ? (
+          <p className="text-gray-500 py-4 text-center">
+            Chưa có bài hát thịnh hành.
+          </p>
+        ) : (
+          renderTrackList(trending)
+        )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-        {trending.map((media) => (
-          <div
-            key={media.mediaItemId}
-            className="group bg-[#181818] p-4 rounded-2xl hover:bg-[#282828] transition-all duration-300 cursor-pointer relative"
-          >
-            <div className="relative mb-4" onClick={() => handlePlay(media)}>
-              <div className="aspect-square rounded-xl overflow-hidden bg-[#282828]">
-                {media.thumbnailUrl ? (
-                  <img
-                    src={media.thumbnailUrl}
-                    alt={media.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-6xl text-gray-700">
-                    ♪
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePlay(media);
-                }}
-                className="absolute bottom-3 right-3 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hover:scale-105 active:scale-95"
-              >
-                <Play size={24} className="text-black ml-1" />
-              </button>
-            </div>
-
-            <div onClick={() => handlePlay(media)}>
-              <h3 className="font-bold text-lg truncate">{media.title}</h3>
-              <p className="text-gray-400 text-sm truncate">
-                {media.artistName}
-              </p>
-              {media.playCount && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {Math.floor(media.playCount / 1000)}K lượt nghe
-                </p>
-              )}
-            </div>
-
-            <div className="mt-3 flex gap-2 items-center">
-              {media.hasVideo ? (
-                <button
-                  onClick={() => navigate(`/video/${media.mediaItemId}`)}
-                  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-full text-sm font-semibold transition"
-                >
-                  Xem
-                </button>
-              ) : (
-                <button
-                  onClick={() => handlePlay(media)}
-                  className="flex-1 bg-green-500 hover:bg-green-400 text-black py-2 rounded-full text-sm font-semibold transition"
-                >
-                  Phát
-                </button>
-              )}
-
-              <button
-                onClick={() => openShareModal(media)}
-                className="px-4 bg-[#282828] hover:bg-[#3a3a3a] rounded-full text-sm font-medium transition"
-              >
-                Chia sẻ
-              </button>
-
-              <button
-                onClick={() => toggleLike(media.mediaItemId)}
-                className="p-2 rounded-full hover:bg-[#3a3a3a] transition"
-              >
-                <Heart
-                  size={20}
-                  className={
-                    likedSongs.includes(media.mediaItemId)
-                      ? "text-red-500 fill-red-500"
-                      : "text-gray-400"
-                  }
-                />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* AI Gợi ý nhạc thông minh */}
+      {/* 2. Recommended Music Section (Under Trending) */}
       {recommendedSongs.length > 0 && (
-        <div className="mt-14">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-3xl font-bold">Dành cho bạn</h2>
-              <p className="text-gray-400 mt-1">
-                Gợi ý dựa trên sở thích của bạn
-              </p>
-            </div>
+        <div>
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold tracking-tight">NHẠC ĐỀ XUẤT</h2>
+            <p className="text-gray-400 text-sm mt-1">
+              Gợi ý dành riêng cho bạn dựa trên sở thích
+            </p>
           </div>
+          {renderTrackList(recommendedSongs)}
+        </div>
+      )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {recommendedSongs.map((media) => (
-              <div
-                key={media.mediaItemId}
-                className="group bg-[#181818] p-4 rounded-2xl hover:bg-[#282828] transition-all duration-300 cursor-pointer relative"
+      {/* 3. New Music Section */}
+      <div>
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold tracking-tight">
+            NHẠC MỚI CẬP NHẬT
+          </h2>
+          <p className="text-gray-400 text-sm mt-1">
+            Những tác phẩm mới nhất vừa được đăng tải
+          </p>
+        </div>
+        {newSongs.length === 0 ? (
+          <p className="text-gray-500 py-4 text-center">
+            Chưa có nhạc mới cập nhật.
+          </p>
+        ) : (
+          renderTrackList(newSongs)
+        )}
+      </div>
+
+      {/* Edit Song Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#181818] w-full max-w-md rounded-2xl p-6 border border-[#282828] shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white">
+                Chỉnh sửa bài hát
+              </h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-white"
               >
-                <div
-                  className="relative mb-4"
-                  onClick={() => handlePlay(media)}
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateSong} className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Tên bài hát *
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 border border-[#3a3a3a] text-white"
+                  placeholder="Tên bài hát"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Tên Ca Sĩ / Nghệ Sĩ
+                </label>
+                <input
+                  type="text"
+                  value={editArtistName}
+                  onChange={(e) => setEditArtistName(e.target.value)}
+                  className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 border border-[#3a3a3a] text-white"
+                  placeholder="Tên ca sĩ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Album
+                </label>
+                <select
+                  value={editAlbumId}
+                  onChange={(e) => setEditAlbumId(e.target.value)}
+                  className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 border border-[#3a3a3a] text-white"
                 >
-                  <div className="aspect-square rounded-xl overflow-hidden bg-[#282828]">
-                    {media.thumbnailUrl ? (
+                  <option value="">--- Chọn Album (Không bắt buộc) ---</option>
+                  {albums.map((album) => (
+                    <option key={album.albumId} value={album.albumId}>
+                      {album.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Ảnh bìa bài hát / Thumbnail (Upload mới)
+                </label>
+                <div className="flex items-center gap-4">
+                  {editThumbnailPreview ? (
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-[#282828] flex-shrink-0 border border-[#3a3a3a]">
                       <img
-                        src={media.thumbnailUrl}
-                        alt={media.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        src={editThumbnailPreview}
+                        alt="Thumbnail preview"
+                        className="w-full h-full object-cover"
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-6xl text-gray-700">
-                        ♪
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePlay(media);
-                    }}
-                    className="absolute bottom-3 right-3 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl hover:scale-105 active:scale-95"
-                  >
-                    <Play size={24} className="text-black ml-1" />
-                  </button>
-                </div>
-
-                <div onClick={() => handlePlay(media)}>
-                  <h3 className="font-bold text-lg truncate">{media.title}</h3>
-                  <p className="text-gray-400 text-sm truncate">
-                    {media.artistName}
-                  </p>
-                </div>
-
-                <div className="mt-3 flex gap-2 items-center">
-                  {media.hasVideo ? (
-                    <button
-                      onClick={() => navigate(`/video/${media.mediaItemId}`)}
-                      className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-full text-sm font-semibold transition"
-                    >
-                      Xem
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditThumbnailFile(null);
+                          setEditThumbnailPreview("");
+                        }}
+                        className="absolute top-0.5 right-0.5 p-0.5 bg-red-600 rounded-full text-white hover:bg-red-500"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
                   ) : (
-                    <button
-                      onClick={() => handlePlay(media)}
-                      className="flex-1 bg-green-500 hover:bg-green-400 text-black py-2 rounded-full text-sm font-semibold transition"
-                    >
-                      Phát
-                    </button>
+                    <label className="w-16 h-16 rounded-xl border border-dashed border-[#3a3a3a] hover:border-green-500 flex flex-col items-center justify-center cursor-pointer transition text-gray-500 hover:text-green-500">
+                      <ImageIcon size={18} />
+                      <span className="text-[9px] mt-0.5 font-medium">
+                        Chọn ảnh
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleEditThumbnailChange}
+                        className="hidden"
+                      />
+                    </label>
                   )}
-
-                  <button
-                    onClick={() => openShareModal(media)}
-                    className="px-4 bg-[#282828] hover:bg-[#3a3a3a] rounded-full text-sm font-medium transition"
-                  >
-                    Chia sẻ
-                  </button>
-
-                  <button
-                    onClick={() => toggleLike(media.mediaItemId)}
-                    className="p-2 rounded-full hover:bg-[#3a3a3a] transition"
-                  >
-                    <Heart
-                      size={20}
-                      className={
-                        likedSongs.includes(media.mediaItemId)
-                          ? "text-red-500 fill-red-500"
-                          : "text-gray-400"
-                      }
-                    />
-                  </button>
+                  <div className="text-xs text-gray-400">
+                    Chọn ảnh đại diện mới cho bài hát (nếu có).
+                  </div>
                 </div>
               </div>
-            ))}
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-3 rounded-full bg-[#282828] hover:bg-[#3a3a3a] font-semibold transition text-white"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingSong || !editTitle.trim()}
+                  className="flex-1 py-3 rounded-full bg-green-500 hover:bg-green-400 disabled:bg-gray-600 text-black font-semibold transition"
+                >
+                  {isUpdatingSong ? "Đang lưu..." : "Cập nhật"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
       <ShareModal
         isOpen={shareModal.isOpen}
-        onClose={() => setShareModal({ isOpen: false, media: null })}
-        mediaItemId={shareModal.media?.mediaItemId}
-        title={shareModal.media?.title || ""}
+        onClose={() => setShareModal({ isOpen: false, title: "" })}
+        mediaItemId={shareModal.mediaItemId}
+        title={shareModal.title}
+      />
+
+      <AddToPlaylistModal
+        isOpen={playlistModal.isOpen}
+        onClose={() =>
+          setPlaylistModal({ isOpen: false, mediaItemId: null, title: "" })
+        }
+        mediaItemId={playlistModal.mediaItemId}
+        trackTitle={playlistModal.title}
       />
     </div>
   );

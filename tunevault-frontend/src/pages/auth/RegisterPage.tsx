@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { authService } from "../../api";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { authService } from "../../api";
+import { useAuthStore } from "../../stores/authStore";
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -11,29 +12,47 @@ const RegisterPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [event.target.name]: event.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.displayName || !formData.email || !formData.password) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!formData.displayName.trim() || !formData.email.trim() || !formData.password) {
+      toast.error("Vui long dien day du thong tin");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Mat khau phai co it nhat 6 ky tu");
       return;
     }
 
     setLoading(true);
-
     try {
-      const response = await authService.register(formData);
+      console.log("Starting registration with:", { displayName: formData.displayName, email: formData.email });
+      const response = await authService.register({
+        displayName: formData.displayName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+      console.log("Registration response:", response);
 
-      if (response.success) {
-        toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
-        navigate("/login");
+      if (response.success && response.data) {
+        console.log("Setting auth with token:", response.data.token);
+        setAuth(response.data.token, response.data.user);
+        toast.success("Dang ky thanh cong!");
+        navigate("/home");
+      } else {
+        console.warn("Registration response not successful:", response);
+        toast.error("Đăng ký thất bại: phản hồi không hợp lệ");
       }
     } catch (error: any) {
-      const message = error.response?.data?.message || "Đăng ký thất bại";
+      console.error("Registration error:", error);
+      const message = error.response?.data?.message || error.message || "Dang ky that bai";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -47,14 +66,14 @@ const RegisterPage = () => {
           <h1 className="text-5xl font-bold tracking-tighter text-green-500">
             TuneVault
           </h1>
-          <p className="mt-2 text-gray-400">Tạo tài khoản mới</p>
+          <p className="mt-2 text-gray-400">Tao tai khoan moi</p>
         </div>
 
         <div className="rounded-2xl bg-[#181818] p-8 shadow-xl">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
-                Tên hiển thị
+                Ten hien thi
               </label>
               <input
                 type="text"
@@ -62,7 +81,7 @@ const RegisterPage = () => {
                 value={formData.displayName}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white focus:border-green-500 focus:outline-none"
-                placeholder="Nguyễn Văn A"
+                placeholder="Nguyen Van A"
                 required
               />
             </div>
@@ -84,7 +103,7 @@ const RegisterPage = () => {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
-                Mật khẩu
+                Mat khau
               </label>
               <input
                 type="password"
@@ -92,7 +111,7 @@ const RegisterPage = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white focus:border-green-500 focus:outline-none"
-                placeholder="••••••••"
+                placeholder="Toi thieu 6 ky tu"
                 required
               />
             </div>
@@ -102,17 +121,14 @@ const RegisterPage = () => {
               disabled={loading}
               className="mt-2 w-full rounded-full bg-green-500 py-3.5 text-lg font-semibold text-black transition hover:bg-green-400 disabled:opacity-70"
             >
-              {loading ? "Đang tạo tài khoản..." : "Đăng ký"}
+              {loading ? "Dang tao tai khoan..." : "Dang ky"}
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-400">
-            Đã có tài khoản?{" "}
-            <Link
-              to="/login"
-              className="font-medium text-green-500 hover:underline"
-            >
-              Đăng nhập ngay
+            Da co tai khoan?{" "}
+            <Link to="/login" className="font-medium text-green-500 hover:underline">
+              Dang nhap ngay
             </Link>
           </div>
         </div>

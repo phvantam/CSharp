@@ -5,3 +5,10 @@ tunevault-frontend/.env
 tunevault-frontend/.env.local
 tunevault-frontend/.vscode/
 *.log
+.dotnet/
+.nuget/
+**/bin/
+**/obj/
+TuneVault.Api/App_Data/
+.vscode/
+*.mp3

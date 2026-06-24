@@ -18,6 +18,34 @@ export interface RegisterRequest {
   displayName: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  data: {
+    email: string;
+    resetToken: string;
+    expiresAt: string;
+    message: string;
+  };
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  resetToken: string;
+  newPassword: string;
+}
+
+export interface ApiMessageResponse {
+  success: boolean;
+  data?: {
+    message?: string;
+  };
+  message?: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   data: {

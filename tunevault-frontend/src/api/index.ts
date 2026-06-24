@@ -6,3 +6,5 @@ export * from "./notificationService";
 export * from "./playlistService";
 export * from "./shareService";
 export * from "./userService";
+export * from "./albumService";
+

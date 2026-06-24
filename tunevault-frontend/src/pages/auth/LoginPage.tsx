@@ -80,6 +80,15 @@ const LoginPage = () => {
               />
             </div>
 
+            <div className="-mt-3 text-right text-sm">
+              <Link
+                to="/forgot-password"
+                className="font-medium text-green-500 hover:underline"
+              >
+                Quen mat khau?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={loading}

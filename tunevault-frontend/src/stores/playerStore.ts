@@ -20,6 +20,7 @@ interface PlayerState {
   currentIndex: number;
   repeatMode: RepeatMode;
   shuffle: boolean;
+  playedShuffleIds: number[];
 
   // Actions
   playTrack: (track: Track, newQueue?: Track[]) => void;
@@ -45,9 +46,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentIndex: 0,
   repeatMode: "off",
   shuffle: false,
+  playedShuffleIds: [],
 
   playTrack: (track, newQueue) => {
-    const queue = newQueue || get().queue.length > 0 ? get().queue : [track];
+    const queue = newQueue ? newQueue : (get().queue.length > 0 ? get().queue : [track]);
     const index = queue.findIndex((t) => t.id === track.id);
 
     set({
@@ -56,6 +58,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       progress: 0,
       queue: queue,
       currentIndex: index >= 0 ? index : 0,
+      playedShuffleIds: [track.id],
     });
   },
 
@@ -65,23 +68,79 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setVolume: (volume) => set({ volume }),
 
   nextTrack: () => {
-    const { queue, currentIndex, repeatMode } = get();
+    const { queue, currentIndex, repeatMode, shuffle, playedShuffleIds, currentTrack } = get();
     if (queue.length === 0) return;
 
-    let nextIndex = currentIndex + 1;
+    if (shuffle) {
+      const currentTrackId = currentTrack?.id;
+      // Filter out tracks that have been played in shuffle mode
+      const unplayed = queue.filter(
+        (t) => !playedShuffleIds.includes(t.id) && t.id !== currentTrackId
+      );
 
-    if (nextIndex >= queue.length) {
-      if (repeatMode === "all") nextIndex = 0;
-      else return;
+      if (unplayed.length > 0) {
+        // Pick a random track from the unplayed tracks
+        const nextTrack = unplayed[Math.floor(Math.random() * unplayed.length)];
+        const nextIndex = queue.findIndex((t) => t.id === nextTrack.id);
+
+        set({
+          currentTrack: nextTrack,
+          currentIndex: nextIndex >= 0 ? nextIndex : 0,
+          isPlaying: true,
+          progress: 0,
+          playedShuffleIds: [...playedShuffleIds, nextTrack.id],
+        });
+      } else {
+        // All tracks in queue have been played once
+        if (repeatMode === "all" || repeatMode === "one") {
+          // If repeat is active, reset playedShuffleIds and pick a random track (excluding current if queue.length > 1)
+          let eligibleTracks = queue;
+          if (queue.length > 1 && currentTrackId !== undefined) {
+            eligibleTracks = queue.filter((t) => t.id !== currentTrackId);
+          }
+          const nextTrack = eligibleTracks[Math.floor(Math.random() * eligibleTracks.length)];
+          const nextIndex = queue.findIndex((t) => t.id === nextTrack.id);
+
+          set({
+            currentTrack: nextTrack,
+            currentIndex: nextIndex >= 0 ? nextIndex : 0,
+            isPlaying: true,
+            progress: 0,
+            playedShuffleIds: [nextTrack.id],
+          });
+        } else {
+          // If repeat is off, stop playback and clear shuffle history
+          set({
+            isPlaying: false,
+            progress: 0,
+            playedShuffleIds: [],
+          });
+        }
+      }
+    } else {
+      let nextIndex = currentIndex + 1;
+
+      if (nextIndex >= queue.length) {
+        if (repeatMode === "all") {
+          nextIndex = 0;
+        } else {
+          // If repeat is off, stop playback
+          set({
+            isPlaying: false,
+            progress: 0,
+          });
+          return;
+        }
+      }
+
+      const nextTrack = queue[nextIndex];
+      set({
+        currentTrack: nextTrack,
+        currentIndex: nextIndex,
+        isPlaying: true,
+        progress: 0,
+      });
     }
-
-    const nextTrack = queue[nextIndex];
-    set({
-      currentTrack: nextTrack,
-      currentIndex: nextIndex,
-      isPlaying: true,
-      progress: 0,
-    });
   },
 
   previousTrack: () => {
@@ -115,8 +174,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
   },
 
-  clearQueue: () => set({ queue: [], currentIndex: 0 }),
+  clearQueue: () => set({ queue: [], currentIndex: 0, playedShuffleIds: [] }),
 
   setRepeatMode: (mode) => set({ repeatMode: mode }),
-  toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
+  toggleShuffle: () => set((state) => ({
+    shuffle: !state.shuffle,
+    playedShuffleIds: state.currentTrack ? [state.currentTrack.id] : [],
+  })),
 }));

@@ -5,6 +5,8 @@ import { useAuthStore } from "../stores/authStore";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export const useSignalR = () => {
   const addNotification = useNotificationStore(
     (state) => state.addNotification,
@@ -19,7 +21,7 @@ export const useSignalR = () => {
     if (!token) return;
 
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${import.meta.env.VITE_API_URL}/notificationHub`, {
+      .withUrl(`${API_URL}/notificationHub`, {
         accessTokenFactory: () => token,
       })
       .withAutomaticReconnect()

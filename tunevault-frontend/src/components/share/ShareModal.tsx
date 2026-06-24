@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { X, Search, User } from "lucide-react";
-import { shareService } from "../../api";
+import { useEffect, useState } from "react";
+import { Search, User, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { shareService, userService } from "../../api";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -9,6 +9,11 @@ interface ShareModalProps {
   mediaItemId?: number;
   playlistId?: number;
   title: string;
+}
+
+interface ShareUser {
+  id: string;
+  name: string;
 }
 
 const ShareModal = ({
@@ -19,53 +24,57 @@ const ShareModal = ({
   title,
 }: ShareModalProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUser, setSelectedUser] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const [users, setUsers] = useState<ShareUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<ShareUser | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [userLoading, setUserLoading] = useState(false);
 
-  // Mock danh sách user (sau này sẽ lấy từ API)
-  const allUsers = [
-    { id: "U001", name: "Nguyễn Yến Vy" },
-    { id: "U002", name: "Trần Minh Khang" },
-    { id: "U003", name: "Lê Hoài Linh" },
-    { id: "U004", name: "Phạm Thị Mai" },
-    { id: "U005", name: "Nguyễn Văn An" },
-    { id: "U006", name: "Trần Thị Bình" },
-  ];
+  useEffect(() => {
+    if (!isOpen) return;
 
-  const filteredUsers = searchTerm
-    ? allUsers.filter((user) =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : [];
+    const timeout = window.setTimeout(async () => {
+      setUserLoading(true);
+      try {
+        const result = await userService.searchUsers(searchTerm);
+        setUsers(
+          result.map((user) => ({
+            id: user.id,
+            name: user.displayName || user.email,
+          })),
+        );
+      } catch {
+        setUsers([]);
+      } finally {
+        setUserLoading(false);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [isOpen, searchTerm]);
 
   if (!isOpen) return null;
 
-  const handleSelectUser = (user: { id: string; name: string }) => {
+  const handleSelectUser = (user: ShareUser) => {
     setSelectedUser(user);
     setSearchTerm("");
   };
 
+  const handleClose = () => {
+    onClose();
+    setSearchTerm("");
+    setSelectedUser(null);
+    setMessage("");
+  };
+
   const handleShare = async () => {
     if (!selectedUser) {
-      toast.error("Vui lòng chọn người nhận");
+      toast.error("Vui long chon nguoi nhan");
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Khi có Backend thật, gọi API:
-      // await shareService.share({
-      //   receiverUserId: selectedUser.id,        // Gửi ID
-      //   receiverUserName: selectedUser.name,    // Gửi thêm tên (nếu backend cần)
-      //   mediaItemId,
-      //   playlistId,
-      //   message: message.trim() || undefined,
-      // });
-
       await shareService.share({
         receiverUserId: selectedUser.id,
         mediaItemId,
@@ -73,13 +82,10 @@ const ShareModal = ({
         message: message.trim() || undefined,
       });
 
-      toast.success(`Đã chia sẻ thành công cho ${selectedUser.name}`);
-      onClose();
-      setSearchTerm("");
-      setSelectedUser(null);
-      setMessage("");
-    } catch (error) {
-      toast.error("Chia sẻ thất bại");
+      toast.success(`Da chia se thanh cong cho ${selectedUser.name}`);
+      handleClose();
+    } catch {
+      toast.error("Chia se that bai");
     } finally {
       setLoading(false);
     }
@@ -88,78 +94,83 @@ const ShareModal = ({
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70">
       <div className="w-full max-w-md rounded-2xl bg-[#181818] p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-xl font-semibold">Chia sẻ "{title}"</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-xl font-semibold">Chia se "{title}"</h3>
+          <button onClick={handleClose} className="text-gray-400 hover:text-white">
             <X size={22} />
           </button>
         </div>
 
-        {/* Tìm theo tên người dùng */}
         <div className="mb-4">
-          <label className="text-sm text-gray-400 mb-1.5 block flex items-center gap-2">
-            <User size={16} /> Tìm người nhận theo tên
+          <label className="mb-1.5 flex items-center gap-2 text-sm text-gray-400">
+            <User size={16} /> Tim nguoi nhan
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-3 text-gray-400" size={18} />
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Nhập tên người dùng..."
-              className="w-full bg-[#282828] pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-white"
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Nhap ten, email hoac ma user..."
+              className="w-full rounded-lg bg-[#282828] py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
         </div>
 
-        {/* Danh sách gợi ý theo tên */}
-        {searchTerm && filteredUsers.length > 0 && (
-          <div className="max-h-44 overflow-y-auto mb-4 border border-[#282828] rounded-lg bg-[#202020]">
-            {filteredUsers.map((user) => (
+        {users.length > 0 && (
+          <div className="mb-4 max-h-44 overflow-y-auto rounded-lg border border-[#282828] bg-[#202020]">
+            {users.map((user) => (
               <div
                 key={user.id}
                 onClick={() => handleSelectUser(user)}
-                className="px-4 py-2.5 hover:bg-[#282828] cursor-pointer flex items-center gap-2 text-sm"
+                className="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#282828]"
               >
                 <User size={16} className="text-gray-400" />
-                {user.name}
+                <span>{user.name}</span>
+                <span className="ml-auto text-xs text-gray-500">{user.id}</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Hiển thị người đã chọn */}
-        {selectedUser && (
-          <div className="mb-4 px-3 py-2 bg-[#282828] rounded-lg text-sm">
-            Đang chia sẻ cho:{" "}
-            <span className="font-semibold text-green-400">
-              {selectedUser.name}
-            </span>
+        {userLoading && (
+          <div className="mb-4 text-sm text-gray-400">Dang tim nguoi dung...</div>
+        )}
+
+        {!userLoading && searchTerm && users.length === 0 && (
+          <div className="mb-4 text-sm text-gray-500">
+            Khong tim thay nguoi dung phu hop
           </div>
         )}
 
-        {/* Tin nhắn */}
+        {selectedUser && (
+          <div className="mb-4 rounded-lg bg-[#282828] px-3 py-2 text-sm">
+            Dang chia se cho:{" "}
+            <span className="font-semibold text-green-400">{selectedUser.name}</span>
+          </div>
+        )}
+
         <textarea
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Tin nhắn (tùy chọn)..."
-          className="w-full bg-[#282828] p-3 rounded-lg mb-5 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+          onChange={(event) => setMessage(event.target.value)}
+          placeholder="Tin nhan tuy chon..."
+          className="mb-5 w-full resize-none rounded-lg bg-[#282828] p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
           rows={3}
         />
 
         <div className="flex justify-end gap-3">
           <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-full bg-[#282828] hover:bg-[#3a3a3a] text-sm"
+            onClick={handleClose}
+            className="rounded-full bg-[#282828] px-5 py-2 text-sm hover:bg-[#3a3a3a]"
           >
-            Hủy
+            Huy
           </button>
           <button
             onClick={handleShare}
             disabled={loading || !selectedUser}
-            className="px-5 py-2 rounded-full bg-green-500 text-black font-semibold hover:bg-green-400 disabled:opacity-60 text-sm"
+            className="rounded-full bg-green-500 px-5 py-2 text-sm font-semibold text-black hover:bg-green-400 disabled:opacity-60"
           >
-            {loading ? "Đang gửi..." : "Chia sẻ"}
+            {loading ? "Dang gui..." : "Chia se"}
           </button>
         </div>
       </div>

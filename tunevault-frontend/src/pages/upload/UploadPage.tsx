@@ -1,18 +1,36 @@
-import { useState } from "react";
-import { Upload, Music, Video, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Upload, Music, Video, X, Image as ImageIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import axiosInstance from "../../api/axiosInstance";
+import { albumService } from "../../api";
+import type { AlbumDto } from "../../api/types/album";
 
 const UploadPage = () => {
   const [file, setFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [albums, setAlbums] = useState<AlbumDto[]>([]);
+  const [selectedAlbumId, setSelectedAlbumId] = useState("");
   const [visibility, setVisibility] = useState<"Public" | "Private">("Public");
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+  useEffect(() => {
+    const fetchAlbums = async () => {
+      try {
+        const data = await albumService.getAlbums();
+        setAlbums(data);
+      } catch (err) {
+        console.error("Error loading albums:", err);
+      }
+    };
+    fetchAlbums();
+  }, []);
 
   const handleFile = (selectedFile: File) => {
     if (
@@ -41,6 +59,18 @@ const UploadPage = () => {
     if (selectedFile) handleFile(selectedFile);
   };
 
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (!selectedFile.type.startsWith("image/")) {
+        toast.error("Chỉ hỗ trợ file ảnh");
+        return;
+      }
+      setThumbnailFile(selectedFile);
+      setThumbnailPreview(URL.createObjectURL(selectedFile));
+    }
+  };
+
   // Drag & Drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -64,6 +94,11 @@ const UploadPage = () => {
     setTitle("");
   };
 
+  const removeThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview("");
+  };
+
   // ==================== KẾT NỐI API THẬT ====================
   const handleUpload = async () => {
     if (!file || !title.trim()) {
@@ -76,10 +111,17 @@ const UploadPage = () => {
 
     try {
       const formData = new FormData();
+      // Backend expects either "video" or "file" key
       formData.append("file", file);
       formData.append("title", title.trim());
       formData.append("artist", artist.trim());
       formData.append("visibility", visibility);
+      if (selectedAlbumId) {
+        formData.append("albumId", selectedAlbumId);
+      }
+      if (thumbnailFile) {
+        formData.append("thumbnail", thumbnailFile);
+      }
 
       await axiosInstance.post("/media/upload", formData, {
         headers: {
@@ -99,8 +141,11 @@ const UploadPage = () => {
 
       // Reset form
       setFile(null);
+      setThumbnailFile(null);
+      setThumbnailPreview("");
       setTitle("");
       setArtist("");
+      setSelectedAlbumId("");
       setProgress(0);
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -184,7 +229,7 @@ const UploadPage = () => {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 border border-[#3a3a3a] text-white"
                 placeholder="Nhập tên bài hát"
               />
             </div>
@@ -197,9 +242,61 @@ const UploadPage = () => {
                 type="text"
                 value={artist}
                 onChange={(e) => setArtist(e.target.value)}
-                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 border border-[#3a3a3a] text-white"
                 placeholder="Tên nghệ sĩ"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1.5">
+                Chọn Album
+              </label>
+              <select
+                value={selectedAlbumId}
+                onChange={(e) => setSelectedAlbumId(e.target.value)}
+                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 border border-[#3a3a3a] text-white"
+              >
+                <option value="">--- Chọn Album (Không bắt buộc) ---</option>
+                {albums.map((album) => (
+                  <option key={album.albumId} value={album.albumId}>
+                    {album.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1.5">
+                Ảnh bìa bài hát / Thumbnail
+              </label>
+              <div className="flex items-center gap-4">
+                {thumbnailPreview ? (
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-[#282828] flex-shrink-0 border border-[#3a3a3a]">
+                    <img src={thumbnailPreview} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={removeThumbnail}
+                      className="absolute top-1 right-1 p-1 bg-red-600 rounded-full text-white hover:bg-red-500 transition"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-20 h-20 rounded-xl border border-dashed border-[#3a3a3a] hover:border-green-500 flex flex-col items-center justify-center cursor-pointer transition text-gray-500 hover:text-green-500 flex-shrink-0">
+                    <ImageIcon size={20} />
+                    <span className="text-[10px] mt-1 text-center font-medium">Chọn ảnh</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleThumbnailChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+                <div className="text-xs text-gray-400">
+                  Hỗ trợ định dạng JPG, PNG, WEBP. Ảnh này sẽ dùng làm hình đại diện cho bài hát khi hiển thị trong danh sách.
+                </div>
+              </div>
             </div>
 
             <div>
@@ -211,7 +308,7 @@ const UploadPage = () => {
                 onChange={(e) =>
                   setVisibility(e.target.value as "Public" | "Private")
                 }
-                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 border border-[#3a3a3a] text-white"
               >
                 <option value="Public">Công khai</option>
                 <option value="Private">Riêng tư</option>

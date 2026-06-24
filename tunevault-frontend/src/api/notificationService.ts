@@ -2,8 +2,8 @@ import axiosInstance from "./axiosInstance";
 
 export const notificationService = {
   async getNotifications() {
-    const res = await axiosInstance.get("/notifications");
-    return res.data;
+    const res = await axiosInstance.get<{ data: any[] }>("/notifications");
+    return res.data.data || [];
   },
 
   async markAsRead(id: number) {
@@ -14,3 +14,4 @@ export const notificationService = {
     return axiosInstance.patch("/notifications/read-all");
   },
 };
+

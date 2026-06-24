@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Play,
   Pause,
@@ -14,13 +15,24 @@ import Queue from "../player/Queue";
 
 const PlayerBar = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const location = useLocation();
   const [showQueue, setShowQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const clickTimeoutRef = useRef<any>(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current !== null) {
+        window.clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const {
     currentTrack,
     isPlaying,
-    progress,
     volume,
     repeatMode,
     shuffle,
@@ -32,6 +44,19 @@ const PlayerBar = () => {
     setRepeatMode,
     toggleShuffle,
   } = usePlayerStore();
+
+  // Close queue when location pathname changes
+  useEffect(() => {
+    setShowQueue(false);
+  }, [location.pathname]);
+
+  // Reset progress and set duration when track changes
+  useEffect(() => {
+    if (currentTrack) {
+      setCurrentTime(0);
+      setDuration(currentTrack.duration || 0);
+    }
+  }, [currentTrack]);
 
   // Phát / Dừng
   useEffect(() => {
@@ -48,10 +73,19 @@ const PlayerBar = () => {
   // Cập nhật thời gian thực
   const handleTimeUpdate = () => {
     const audio = audioRef.current;
-    if (audio && audio.duration) {
-      const currentProgress = (audio.currentTime / audio.duration) * 100;
-      setProgress(currentProgress);
+    if (audio) {
       setCurrentTime(audio.currentTime);
+      if (audio.duration) {
+        const currentProgress = (audio.currentTime / audio.duration) * 100;
+        setProgress(currentProgress);
+      }
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    const audio = audioRef.current;
+    if (audio && audio.duration) {
+      setDuration(audio.duration);
     }
   };
 
@@ -65,11 +99,12 @@ const PlayerBar = () => {
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+    if (!audio || !duration) return;
 
-    const newProgress = parseFloat(e.target.value);
-    audio.currentTime = (newProgress / 100) * audio.duration;
-    setProgress(newProgress);
+    const newTime = parseFloat(e.target.value);
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+    setProgress((newTime / duration) * 100);
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,16 +113,35 @@ const PlayerBar = () => {
     if (audioRef.current) audioRef.current.volume = newVolume / 100;
   };
 
-  const toggleRepeat = () => {
-    const modes: ("off" | "all" | "one")[] = ["off", "all", "one"];
-    const currentIndex = modes.indexOf(repeatMode);
-    setRepeatMode(modes[(currentIndex + 1) % 3]);
+  const handleRepeatClick = () => {
+    if (clickTimeoutRef.current !== null) {
+      window.clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      setRepeatMode("one");
+    } else {
+      clickTimeoutRef.current = window.setTimeout(() => {
+        clickTimeoutRef.current = null;
+        setRepeatMode(repeatMode === "off" ? "all" : "off");
+      }, 250);
+    }
   };
 
   const formatTime = (seconds: number) => {
+    if (isNaN(seconds) || seconds < 0) return "00:00";
     const min = Math.floor(seconds / 60);
     const sec = Math.floor(seconds % 60);
-    return `${min}:${sec.toString().padStart(2, "0")}`;
+    return `${min.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const handleEnded = () => {
+    if (repeatMode === "one") {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(console.error);
+      }
+    } else {
+      nextTrack();
+    }
   };
 
   if (!currentTrack) {
@@ -153,14 +207,19 @@ const PlayerBar = () => {
             <SkipForward size={20} />
           </button>
           <button
-            onClick={toggleRepeat}
-            className={
+            onClick={handleRepeatClick}
+            className={`relative p-1 ${
               repeatMode !== "off"
                 ? "text-green-500"
                 : "text-gray-400 hover:text-white"
-            }
+            }`}
           >
             <Repeat size={18} />
+            {repeatMode === "one" && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-black border border-[#181818]">
+                1
+              </span>
+            )}
           </button>
         </div>
 
@@ -170,12 +229,12 @@ const PlayerBar = () => {
           <input
             type="range"
             min="0"
-            max="100"
-            value={progress}
+            max={duration || 1}
+            value={currentTime}
             onChange={handleSeek}
             className="flex-1 accent-green-500 cursor-pointer"
           />
-          <span>{formatTime(currentTrack.duration)}</span>
+          <span>{formatTime(duration)}</span>
         </div>
       </div>
 
@@ -205,7 +264,8 @@ const PlayerBar = () => {
         ref={audioRef}
         src={currentTrack.audioUrl}
         onTimeUpdate={handleTimeUpdate}
-        onEnded={nextTrack}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
       />
 
       {/* Queue Panel */}

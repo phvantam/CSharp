@@ -1,11 +1,13 @@
 import axiosInstance from "./axiosInstance";
 import type { MediaItemDto } from "./types/media";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export const mediaService = {
   // Lấy danh sách trending
   async getTrendingMedia(limit = 10): Promise<MediaItemDto[]> {
     try {
-      const res = await axiosInstance.get("/media/trending", {
+      const res = await axiosInstance.get<{ data: MediaItemDto[] }>("/media/trending", {
         params: { limit },
       });
       return res.data.data || [];
@@ -40,23 +42,45 @@ export const mediaService = {
     }
 
     // Nếu không có trong map → gọi API thật
-    return `${import.meta.env.VITE_API_URL}/media/${id}/stream`;
+    return `${API_URL}/media/${id}/stream`;
   },
 
   // Upload media
   async uploadMedia(formData: FormData) {
-    const res = await axiosInstance.post("/media/upload", formData, {
+    const res = await axiosInstance.post<{ data: MediaItemDto }>("/media/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return res.data;
+    return res.data.data;
   },
 
   // Tìm kiếm media
-  async searchMedia(query: string, page = 1, pageSize = 20) {
-    const res = await axiosInstance.get("/media/search", {
+  async searchMedia(query: string, page = 1, pageSize = 20): Promise<MediaItemDto[]> {
+    const res = await axiosInstance.get<{ data: { items: MediaItemDto[] } }>("/media/search", {
       params: { q: query, page, pageSize },
     });
-    return res.data;
+    return res.data.data.items || [];
+  },
+
+  async updateMedia(id: number, formData: FormData): Promise<MediaItemDto> {
+    const res = await axiosInstance.put<{ data: MediaItemDto }>(`/media/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data.data;
+  },
+
+  async deleteMedia(id: number): Promise<void> {
+    await axiosInstance.delete(`/media/${id}`);
+  },
+
+  // Yêu thích
+  async toggleFavorite(mediaItemId: number): Promise<{ isFavorited: boolean }> {
+    const res = await axiosInstance.post<{ data: { isFavorited: boolean } }>(`/favorites/${mediaItemId}`);
+    return res.data.data;
+  },
+
+  async getFavorites(): Promise<MediaItemDto[]> {
+    const res = await axiosInstance.get<{ data: MediaItemDto[] }>("/favorites");
+    return res.data.data || [];
   },
 };
 

@@ -2,6 +2,10 @@
 import type {
   LoginRequest,
   RegisterRequest,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ApiMessageResponse,
   AuthResponse,
   UserDto,
 } from "./types/user";
@@ -32,10 +36,14 @@ import type {
   RegisterRequest,
   AuthResponse,
   UserDto,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ApiMessageResponse,
 } from "./types/user";
 
 // ==================== MOCK MODE ====================
-const USE_MOCK = true; // ← Đổi thành false khi có backend thật
+const USE_MOCK = false; // Backend TuneVault.Api is available at http://localhost:5000/api
 
 const mockUser: UserDto = {
   id: "U001",
@@ -86,7 +94,29 @@ export const authService = {
       };
     }
 
+    console.log("Calling register API with:", data);
     const res = await axiosInstance.post<AuthResponse>("/auth/register", data);
+    console.log("Register API response:", res.data);
+    return res.data;
+  },
+
+  async forgotPassword(
+    data: ForgotPasswordRequest,
+  ): Promise<ForgotPasswordResponse> {
+    const res = await axiosInstance.post<ForgotPasswordResponse>(
+      "/auth/forgot-password",
+      data,
+    );
+    return res.data;
+  },
+
+  async resetPassword(
+    data: ResetPasswordRequest,
+  ): Promise<ApiMessageResponse> {
+    const res = await axiosInstance.post<ApiMessageResponse>(
+      "/auth/reset-password",
+      data,
+    );
     return res.data;
   },
 
