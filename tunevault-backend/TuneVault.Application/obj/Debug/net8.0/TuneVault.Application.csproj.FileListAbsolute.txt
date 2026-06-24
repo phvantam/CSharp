@@ -1,0 +1,15 @@
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\bin\Debug\net8.0\TuneVault.Application.deps.json
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\bin\Debug\net8.0\TuneVault.Application.dll
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\bin\Debug\net8.0\TuneVault.Application.pdb
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\bin\Debug\net8.0\TuneVault.Domain.dll
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\bin\Debug\net8.0\TuneVault.Domain.pdb
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVault.Application.csproj.AssemblyReference.cache
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVault.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVault.Application.AssemblyInfoInputs.cache
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVault.Application.AssemblyInfo.cs
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVault.Application.csproj.CoreCompileInputs.cache
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVaul.CD6889CD.Up2Date
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVault.Application.dll
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\refint\TuneVault.Application.dll
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\TuneVault.Application.pdb
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Application\obj\Debug\net8.0\ref\TuneVault.Application.dll

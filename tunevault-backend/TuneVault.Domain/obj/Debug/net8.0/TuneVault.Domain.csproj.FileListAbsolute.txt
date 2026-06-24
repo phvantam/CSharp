@@ -1,0 +1,11 @@
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\bin\Debug\net8.0\TuneVault.Domain.deps.json
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\bin\Debug\net8.0\TuneVault.Domain.dll
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\bin\Debug\net8.0\TuneVault.Domain.pdb
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\TuneVault.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\TuneVault.Domain.AssemblyInfoInputs.cache
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\TuneVault.Domain.AssemblyInfo.cs
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\TuneVault.Domain.csproj.CoreCompileInputs.cache
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\TuneVault.Domain.dll
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\refint\TuneVault.Domain.dll
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\TuneVault.Domain.pdb
+C:\Users\khanh\OneDrive\Desktop\CSharp_test\tunevault-backend\TuneVault.Domain\obj\Debug\net8.0\ref\TuneVault.Domain.dll

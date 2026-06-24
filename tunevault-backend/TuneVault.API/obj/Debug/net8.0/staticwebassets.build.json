@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "kW1D7DVbIHBy+UeOlnhZQfw9IGxxZD7w0cAH+5r0xT4=",
+  "Source": "TuneVault.API",
+  "BasePath": "_content/TuneVault.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
