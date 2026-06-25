@@ -1,71 +1,87 @@
-import { Search, User, Menu } from "lucide-react";
-import { useAuthStore } from "../../stores/authStore";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Bell, Upload, User } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TopbarProps {
-  onMenuClick?: () => void;
+  unreadCount?: number;
 }
 
-const Topbar = ({ onMenuClick }: TopbarProps) => {
-  const { user, logout } = useAuthStore();
+export default function Topbar({ unreadCount = 0 }: TopbarProps) {
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  const { user, isAuthenticated, logout } = useAuth();
 
   return (
-    <div className="flex h-16 items-center justify-between border-b border-[#282828] bg-[#121212] px-4 md:px-6">
-      <div className="flex items-center gap-4">
-        {/* Nút menu cho mobile */}
+    <header className="flex items-center justify-between px-6 h-16 bg-[#121212]/80 backdrop-blur-sm shrink-0 sticky top-0 z-10">
+      {/* Navigation arrows */}
+      <div className="flex items-center gap-2">
         <button
-          onClick={onMenuClick}
-          className="lg:hidden p-2 text-gray-400 hover:text-white"
+          onClick={() => navigate(-1)}
+          className="w-8 h-8 rounded-full bg-[#000000]/70 flex items-center justify-center text-white hover:bg-[#282828] transition-colors"
         >
-          <Menu size={22} />
+          <ChevronLeft size={18} />
         </button>
-
-        {/* Search Bar */}
-        <div className="relative w-64 md:w-96">
-          <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Bạn muốn nghe nhạc gì?"
-            className="w-full rounded-full bg-[#282828] py-2.5 pl-12 pr-4 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white"
-          />
-        </div>
+        <button
+          onClick={() => navigate(1)}
+          className="w-8 h-8 rounded-full bg-[#000000]/70 flex items-center justify-center text-white hover:bg-[#282828] transition-colors"
+        >
+          <ChevronRight size={18} />
+        </button>
       </div>
 
-      {/* User Section */}
-      <div className="flex items-center gap-4">
-        {user ? (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full bg-[#282828] px-3 py-1.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-600">
-                <User size={16} />
-              </div>
-              <span className="text-sm font-medium">{user.displayName}</span>
-            </div>
-
+      {/* Right actions */}
+      <div className="flex items-center gap-3">
+        {isAuthenticated ? (
+          <>
+            {/* Upload */}
             <button
-              onClick={handleLogout}
-              className="rounded-full bg-[#282828] px-4 py-1.5 text-sm font-medium hover:bg-[#3a3a3a]"
+              onClick={() => navigate('/upload')}
+              className="flex items-center gap-2 bg-white text-black text-xs font-bold px-4 py-1.5 rounded-full hover:scale-105 transition-transform"
             >
-              Log out
+              <Upload size={14} />
+              Tải lên
             </button>
-          </div>
+
+            {/* Notification bell */}
+            <button
+              onClick={() => navigate('/notifications')}
+              className="relative w-8 h-8 rounded-full bg-[#242424] flex items-center justify-center text-[#b3b3b3] hover:text-white transition-colors"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#1db954] text-black text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Avatar menu */}
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-8 h-8 rounded-full overflow-hidden bg-[#535353] flex items-center justify-center hover:opacity-80 transition-opacity"
+            >
+              {user?.avatarUrl
+                ? <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
+                : <User size={16} className="text-white" />
+              }
+            </button>
+          </>
         ) : (
-          <button
-            onClick={() => navigate("/login")}
-            className="rounded-full bg-white px-6 py-2 text-sm font-semibold text-black hover:bg-gray-200"
-          >
-            Log in
-          </button>
+          <>
+            <button
+              onClick={() => navigate('/register')}
+              className="text-sm font-semibold text-[#b3b3b3] hover:text-white px-4 py-2 transition-colors"
+            >
+              Đăng ký
+            </button>
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-white text-black text-sm font-bold px-6 py-2 rounded-full hover:scale-105 transition-transform"
+            >
+              Đăng nhập
+            </button>
+          </>
         )}
       </div>
-    </div>
+    </header>
   );
-};
-
-export default Topbar;
+}

@@ -1,107 +1,82 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { authService } from "../../api";
-import { useAuthStore } from "../../stores/authStore";
-import toast from "react-hot-toast";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import Button from '../../components/common/Button';
+import Input  from '../../components/common/Input';
 
-const LoginPage = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function LoginPage() {
+  const { login } = useAuth();
+  const navigate  = useNavigate();
 
-  const navigate = useNavigate();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Vui lòng nhập đầy đủ email và mật khẩu");
-      return;
-    }
-
+    setError('');
     setLoading(true);
-
     try {
-      const response = await authService.login({ email, password });
-
-      if (response.success && response.data) {
-        setAuth(response.data.token, response.data.user);
-        toast.success(`Chào mừng trở lại, ${response.data.user.displayName}!`);
-        navigate("/home");
-      }
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message ||
-        "Đăng nhập thất bại. Vui lòng thử lại.";
-      toast.error(message);
+      await login({ email, password });
+      navigate('/', { replace: true });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { errors?: string[] } } })
+        ?.response?.data?.errors?.[0];
+      setError(msg || 'Email hoặc mật khẩu không đúng');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#121212] px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="mb-10 text-center">
-          <h1 className="text-5xl font-bold tracking-tighter text-green-500">
-            TuneVault
-          </h1>
-          <p className="mt-2 text-gray-400">Đăng nhập để tiếp tục</p>
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-3">🎵</div>
+          <h1 className="text-2xl font-bold text-white">Đăng nhập vào TuneVault</h1>
         </div>
 
-        <div className="rounded-2xl bg-[#181818] p-8 shadow-xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white placeholder:text-gray-500 focus:border-green-500 focus:outline-none"
-                placeholder="you@example.com"
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Input
+            label="Email"
+            type="email"
+            placeholder="name@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            icon={<Mail size={16} />}
+            required
+          />
+          <Input
+            label="Mật khẩu"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            icon={<Lock size={16} />}
+            required
+          />
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300">
-                Mật khẩu
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white placeholder:text-gray-500 focus:border-green-500 focus:outline-none"
-                placeholder="••••••••"
-                required
-              />
-            </div>
+          {error && (
+            <p className="text-sm text-[#e91429] text-center bg-[#e9142915] py-2 px-3 rounded-md">
+              {error}
+            </p>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-4 w-full rounded-full bg-green-500 py-3.5 text-lg font-semibold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-            </button>
-          </form>
+          <Button type="submit" fullWidth loading={loading} size="lg" className="mt-2">
+            Đăng nhập
+          </Button>
+        </form>
 
-          <div className="mt-6 text-center text-sm text-gray-400">
-            Chưa có tài khoản?{" "}
-            <Link
-              to="/register"
-              className="font-medium text-green-500 hover:underline"
-            >
-              Đăng ký ngay
-            </Link>
-          </div>
+        <div className="text-center mt-6 text-sm text-[#b3b3b3]">
+          Chưa có tài khoản?{' '}
+          <Link to="/register" className="text-white font-semibold hover:text-[#1db954] transition-colors underline">
+            Đăng ký miễn phí
+          </Link>
         </div>
       </div>
     </div>
   );
-};
-
-export default LoginPage;
+}

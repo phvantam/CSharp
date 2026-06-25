@@ -1,50 +1,31 @@
-import { Outlet } from "react-router-dom";
-import Sidebar from "../components/layout/Sidebar";
-import Topbar from "../components/layout/Topbar";
-import PlayerBar from "../components/layout/PlayerBar";
-import { useState } from "react";
-import { useSignalR } from "../hooks/useSignalR";
+import { Outlet } from 'react-router-dom';
+import Sidebar from '../components/layout/Sidebar';
+import Topbar from '../components/layout/Topbar';
+import PlayerBar from '../components/layout/PlayerBar';
 
-const MainLayout = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // Kích hoạt SignalR khi vào layout (chỉ gọi 1 lần)
-  useSignalR();
+export default function MainLayout() {
+  // TODO: lấy unreadCount từ NotificationContext (Person B sẽ bổ sung)
+  const unreadCount = 0;
 
   return (
-    <div className="flex h-screen flex-col bg-[#121212] text-white">
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar Desktop */}
-        <div className="hidden lg:block">
-          <Sidebar />
-        </div>
+    <div className="flex flex-col h-screen bg-[#0a0a0a] overflow-hidden">
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar */}
+        <Sidebar />
 
-        {/* Sidebar Mobile (Drawer) */}
-        {isSidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div
-              className="absolute inset-0 bg-black/60"
-              onClick={() => setIsSidebarOpen(false)}
-            />
-            <div className="absolute left-0 top-0 h-full w-64 bg-black">
-              <Sidebar />
+        {/* Main content area */}
+        <div className="flex flex-col flex-1 min-w-0">
+          <Topbar unreadCount={unreadCount} />
+          <main className="flex-1 overflow-y-auto bg-gradient-to-b from-[#1a1a1a] to-[#121212]">
+            <div className="px-6 py-6">
+              <Outlet />
             </div>
-          </div>
-        )}
-
-        {/* Nội dung chính */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Topbar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-
-          <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <Outlet />
           </main>
         </div>
       </div>
 
+      {/* Player bar */}
       <PlayerBar />
     </div>
   );
-};
-
-export default MainLayout;
+}

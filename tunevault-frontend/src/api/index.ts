@@ -1,8 +1,6 @@
-export { default as axiosInstance } from "./axiosInstance";
-
-export * from "./authService";
-export * from "./mediaService";
-export * from "./notificationService";
-export * from "./playlistService";
-export * from "./shareService";
-export * from "./userService";
+export { default as axiosInstance } from './axiosInstance';
+export * from './auth.api';
+export * from './media.api';
+export * from './playlist.api';
+export * from './share.api';
+export * from './notification.api';
