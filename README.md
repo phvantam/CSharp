@@ -1,24 +1,26 @@
 # 🎵 TuneVault - Nền tảng Nghe Nhạc & Video Trực Tuyến
 
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![EF Core](https://img.shields.io/badge/EF_Core-8.x-512BD4)](https://learn.microsoft.com/ef/)
 [![SignalR](https://img.shields.io/badge/SignalR-Real--time-FF6B6B)](https://learn.microsoft.com/aspnet/core/signalr)
+[![MediatR](https://img.shields.io/badge/MediatR-Pipeline-FF6B6B)](https://github.com/jbogard/MediatR)
 [![Status](https://img.shields.io/badge/Status-Hoàn%20thiện%20đồ%20án-success)](https://github.com/phvantam/CSharp)
 
-**TuneVault** là ứng dụng nghe nhạc và xem video trực tuyến được xây dựng theo mô hình **Clean Architecture** kết hợp **MediatR Pipeline**, hỗ trợ chia sẻ media, thông báo thời gian thực (SignalR) và tích hợp AI.
+**TuneVault** là đồ án môn **Lập trình C#** (Học kỳ 3 - 2026) tại Trường Đại học Sài Gòn. Dự án được xây dựng theo mô hình **Clean Architecture** kết hợp **MediatR Pipeline Behaviors**, hỗ trợ chia sẻ media, thông báo thời gian thực và tích hợp AI.
 
 ---
 
 ## 📋 Mục lục
 
 - [Giới thiệu](#giới-thiệu)
+- [⭐ Điểm nổi bật của đồ án](#-điểm-nổi-bật-của-đồ-án)
 - [Tính năng chính](#tính-năng-chính)
 - [Công nghệ sử dụng](#công-nghệ-sử-dụng)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
 - [Kiến trúc hệ thống](#kiến-trúc-hệ-thống)
-- [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
+- [Seed Data](#seed-data)
+- [Kiểm thử API (Swagger & Postman)](#kiểm-thử-api-swagger--postman)
 - [Hướng dẫn cài đặt](#hướng-dẫn-cài-đặt)
 - [Tài khoản thử nghiệm](#tài-khoản-thử-nghiệm)
 - [Tài liệu tham khảo](#tài-liệu-tham-khảo)
@@ -27,50 +29,84 @@
 
 ## 📝 Giới thiệu
 
-**TuneVault** là đồ án môn **Lập trình C#** (Học kỳ 3 - 2026) tại Trường Đại học Sài Gòn.  
-Dự án được thiết kế theo **Clean Architecture** 4 lớp, sử dụng **MediatR + Pipeline Behaviors** cho tất cả các chức năng chính, kết hợp **SignalR** cho thông báo thời gian thực và tích hợp **AI** (OpenRouter).
+**TuneVault** là nền tảng nghe nhạc và xem video trực tuyến được thiết kế theo chuẩn **Clean Architecture** 4 lớp. Toàn bộ logic nghiệp vụ được xử lý qua **MediatR Pipeline**, đảm bảo tính tách biệt rõ ràng giữa các layer và dễ dàng mở rộng.
+
+Dự án đã hoàn thiện các chức năng cốt lõi theo yêu cầu đồ án, bao gồm chia sẻ media, thông báo real-time và tích hợp AI.
+
+---
+
+## ⭐ Điểm nổi bật của đồ án
+
+Dự án được xây dựng với nhiều điểm mạnh về kiến trúc và tính năng:
+
+### 1. **Clean Architecture + MediatR Pipeline (B1 & B8)**
+- Tuân thủ nghiêm ngặt **4 layer**: Domain → Application → Infrastructure → API
+- Tất cả chức năng chính đều đi qua **MediatR Pipeline** với 2 Behaviors quan trọng:
+  - `ValidationBehavior`: Kiểm tra dữ liệu đầu vào bằng FluentValidation
+  - `AuthorizationBehavior`: Kiểm tra quyền sở hữu (chỉ chủ sở hữu mới được sửa/xóa media, playlist)
+- Logic nghiệp vụ được tách biệt hoàn toàn khỏi Controller
+
+### 2. **Tích hợp AI (OpenRouter)**
+- Chatbot hỗ trợ người dùng (TuneBot)
+- Gợi ý bài hát thông minh dựa trên lịch sử nghe và yêu thích
+- Triển khai đúng chuẩn Clean Architecture (Interface trong Application, Service trong Infrastructure)
+
+### 3. **Thông báo thời gian thực (SignalR)**
+- Khi chia sẻ media/playlist thành công → tự động tạo Notification + đẩy thông báo real-time qua SignalR
+- Người nhận thấy thông báo ngay lập tức mà không cần reload trang
+
+### 4. **Upload đa phương tiện nâng cao**
+- Hỗ trợ upload đồng thời **Audio + Video + Thumbnail** trong 1 request
+- Validate MIME type và giới hạn kích thước file
+- Lưu file theo cấu trúc rõ ràng trong `wwwroot/media`
+
+### 5. **Tính năng xã hội đầy đủ**
+- Chia sẻ media/playlist cho người khác
+- Follow/Unfollow nghệ sĩ và người dùng
+- Yêu thích bài hát + Lịch sử nghe nhạc
 
 ---
 
 ## 🚀 Tính năng chính
 
-### Backend (10+ chức năng cốt lõi)
+### Backend
 
-| STT | Chức năng                          | Pipeline | Trạng thái |
-|-----|------------------------------------|----------|------------|
-| 1   | Đăng ký / Đăng nhập (JWT)          | ✅       | Hoàn thiện |
-| 2   | Upload Media (Audio + Video + Thumbnail) | ✅   | Hoàn thiện |
-| 3   | Quản lý Playlist (CRUD + Add/Remove Track) | ✅ | Hoàn thiện |
-| 4   | Chia sẻ Media / Playlist           | ✅       | Hoàn thiện |
-| 5   | Thông báo Real-time (SignalR)      | ✅       | Hoàn thiện |
-| 6   | Yêu thích & Lịch sử nghe           | ✅       | Hoàn thiện |
-| 7   | Follow / Unfollow Nghệ sĩ & User   | ✅       | Hoàn thiện |
-| 8   | Tìm kiếm & Trending / New Releases | ✅       | Hoàn thiện |
-| 9   | AI Chatbot + Gợi ý bài hát         | ✅       | Hoàn thiện |
-| 10  | Quản lý Nghệ sĩ & Album            | ✅       | Hoàn thiện |
+| Chức năng                        | Mô tả chi tiết                                                                 | Pipeline | Trạng thái    |
+|----------------------------------|----------------------------------------------------------------------------------|----------|---------------|
+| **Auth**                         | Đăng ký, Đăng nhập bằng JWT, Refresh Token                                       | ✅       | Hoàn thiện    |
+| **Media Management**             | Upload (Audio + Video + Thumbnail), Update, Delete, Streaming                    | ✅       | Hoàn thiện    |
+| **Playlist**                     | Tạo, Sửa, Xóa Playlist + Thêm/Xóa bài hát trong playlist                         | ✅       | Hoàn thiện    |
+| **Share**                        | Chia sẻ Media/Playlist cho người khác + Danh sách đã gửi/nhận                    | ✅       | Hoàn thiện    |
+| **Notification**                 | Lấy danh sách thông báo, Đánh dấu đã đọc, Real-time push qua SignalR             | ✅       | Hoàn thiện    |
+| **Favorite & Play History**      | Thêm/Xóa yêu thích, Ghi nhận lịch sử nghe nhạc                                   | ✅       | Hoàn thiện    |
+| **Artist & Album**               | Quản lý nghệ sĩ, Album, Tìm kiếm nghệ sĩ                                         | ✅       | Hoàn thiện    |
+| **Search & Discovery**           | Tìm kiếm media, Xem Trending, New Releases                                       | ✅       | Hoàn thiện    |
+| **AI Integration**               | Chatbot hỗ trợ + Gợi ý bài hát thông minh                                        | ✅       | Hoàn thiện    |
+| **User Interaction**             | Follow/Unfollow người dùng và nghệ sĩ                                            | ✅       | Hoàn thiện    |
 
 ### Frontend
 
-- Giao diện tối hiện đại (Dark Theme)
-- Trình phát nhạc + video chuyên nghiệp
-- Hệ thống chia sẻ + thông báo thời gian thực
-- Trang Upload đa phương tiện
+- Giao diện hiện đại, tối (Dark Theme)
+- Trình phát nhạc và video chuyên nghiệp
+- Hệ thống chia sẻ + thông báo real-time
+- Trang Upload hỗ trợ đa phương tiện
 - AI Chatbot tích hợp
+- Trang Library, Search, Artist, Album chi tiết
 
 ---
 
 ## 🛠️ Công nghệ sử dụng
 
-| Layer              | Công nghệ                              |
-|--------------------|----------------------------------------|
-| **Backend**        | ASP.NET Core 8, EF Core, MediatR, FluentValidation, SignalR |
-| **Architecture**   | Clean Architecture + CQRS + Pipeline Behaviors |
-| **Database**       | SQL Server + EF Core Migrations        |
-| **Frontend**       | React 18 + TypeScript + Vite + TailwindCSS |
-| **State**          | Zustand                                |
-| **Real-time**      | SignalR Client                         |
-| **AI**             | OpenRouter API                         |
-| **Authentication** | JWT + ASP.NET Identity                 |
+| Layer                  | Công nghệ                                      |
+|------------------------|------------------------------------------------|
+| **Backend**            | ASP.NET Core 8, Entity Framework Core, MediatR, FluentValidation, SignalR |
+| **Architecture**       | Clean Architecture + CQRS + Pipeline Behaviors |
+| **Database**           | SQL Server                                     |
+| **Frontend**           | React 18 + TypeScript + Vite + Tailwind CSS    |
+| **State Management**   | Zustand                                        |
+| **Real-time**          | SignalR                                        |
+| **AI**                 | OpenRouter API                                 |
+| **Authentication**     | JWT + ASP.NET Identity                         |
 
 ---
 
