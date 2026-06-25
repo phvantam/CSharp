@@ -79,6 +79,8 @@ Dự án được thiết kế theo **Clean Architecture** 4 lớp, sử dụng 
 ```text
 TuneVault/
 │
+├── 📁 database/
+│   └── 📄 TuneVault.sql
 ├── 📁 tunevault-backend/                              # Backend ASP.NET Core 8 (Clean Architecture)
 │   ├── 📄 TuneVault.slnx
 │   │
@@ -117,18 +119,6 @@ TuneVault/
 ├── 📁 tunevault-frontend/                             # Frontend React + TypeScript (Vite)
 │   ├── 📁 src/
 │   │   ├── 📁 api/                                    # Gọi API Backend
-│   │   │   ├── aiService.ts
-│   │   │   ├── albumService.ts
-│   │   │   ├── artistService.ts
-│   │   │   ├── authService.ts
-│   │   │   ├── axiosInstance.ts
-│   │   │   ├── favoriteService.ts
-│   │   │   ├── mediaService.ts
-│   │   │   ├── notificationService.ts
-│   │   │   ├── playHistoryService.ts
-│   │   │   ├── playlistService.ts
-│   │   │   ├── shareService.ts
-│   │   │   └── userService.ts
 │   │   │
 │   │   ├── 📁 components/                             # Component dùng chung
 │   │   │   ├── 📁 common/                             # ConfirmModal, ImageAdjustModal, NotificationToast
@@ -160,17 +150,9 @@ TuneVault/
 │   │   │   └── 📁 video/                              # VideoPlayerPage.tsx
 │   │   │
 │   │   ├── 📁 stores/                                 # Zustand State Management
-│   │   │   ├── authStore.ts
-│   │   │   ├── notificationStore.ts
-│   │   │   ├── playerStore.ts
-│   │   │   └── sidebarStore.ts
-│   │   │
 │   │   └── 📁 utils/                                  # formatCount.ts
 │   │
 │   ├── 📁 public/                                     # Static assets (audio, image, videos)
 │   └── 📄 package.json
-│
-├── 📁 database/
-│   └── 📄 TuneVault.sql
 │
 └── 📄 README.md
