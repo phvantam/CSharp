@@ -86,12 +86,20 @@ Dự án được xây dựng với nhiều điểm mạnh về kiến trúc và
 
 ### Frontend
 
-- Giao diện hiện đại, tối (Dark Theme)
-- Trình phát nhạc và video chuyên nghiệp
-- Hệ thống chia sẻ + thông báo real-time
-- Trang Upload hỗ trợ đa phương tiện
-- AI Chatbot tích hợp
-- Trang Library, Search, Artist, Album chi tiết
+| Trang / Chức năng              | Mô tả chi tiết                                                                 | Trạng thái    |
+|--------------------------------|--------------------------------------------------------------------------------|---------------|
+| **Home Page**                  | Hiển thị Trending, New Releases, AI Recommendations                            | Hoàn thiện    |
+| **Search Page**                | Tìm kiếm Media + Artist                                                        | Hoàn thiện    |
+| **Library Page**               | Quản lý Playlist, Bài hát của tôi, Yêu thích, Lịch sử nghe                     | Hoàn thiện    |
+| **Upload Page**                | Upload Audio + Video + Thumbnail cùng lúc, có preview                          | Hoàn thiện    |
+| **Playlist Detail**            | Xem chi tiết playlist, thêm/xóa bài hát, chia sẻ                               | Hoàn thiện    |
+| **Artist / Album Detail**      | Trang chi tiết nghệ sĩ và album                                                | Hoàn thiện    |
+| **Notifications Page**         | Danh sách thông báo + đánh dấu đã đọc (kết hợp SignalR)                        | Hoàn thiện    |
+| **Share Inbox**                | Xem media/playlist được chia sẻ với mình                                       | Hoàn thiện    |
+| **AI Chatbot**                 | Chatbot hỗ trợ người dùng (floating chat)                                      | Hoàn thiện    |
+| **Video Player**               | Xem video với trình phát chuyên dụng                                           | Hoàn thiện    |
+| **Profile Page**               | Xem và chỉnh sửa thông tin cá nhân                                             | Hoàn thiện    |
+| **Player Bar**                 | Trình phát nhạc toàn cục (Play, Pause, Next, Progress, Queue)                  | Hoàn thiện    |
 
 ---
 
