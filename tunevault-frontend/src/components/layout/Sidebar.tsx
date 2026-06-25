@@ -1,106 +1,80 @@
-import {
-  Home,
-  Search,
-  Library,
-  Share2,
-  Bell,
-  User,
-  Upload,
-  Bot,
-} from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { useNotificationStore } from "../../stores/notificationStore";
+import { NavLink } from 'react-router-dom';
+import { Home, Search, Library, PlusSquare, Heart } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
-const Sidebar = () => {
-  const location = useLocation();
-  const { unreadCount } = useNotificationStore();
+const navItems = [
+  { to: '/',        icon: Home,    label: 'Trang chủ' },
+  { to: '/search',  icon: Search,  label: 'Tìm kiếm' },
+  { to: '/library', icon: Library, label: 'Thư viện' },
+];
 
-  const menuItems = [
-    { icon: Home, label: "Home", path: "/home" },
-    { icon: Search, label: "Search", path: "/search" },
-    { icon: Library, label: "Your Library", path: "/library" },
-  ];
-
-  const socialItems = [
-    { icon: Share2, label: "Share Inbox", path: "/share-inbox" },
-    { icon: Upload, label: "Upload", path: "/upload" },
-    { icon: Bot, label: "Music Assistant", path: "/ai-chat" },
-    {
-      icon: Bell,
-      label: "Notifications",
-      path: "/notifications",
-      hasBadge: true,
-    },
-    { icon: User, label: "Profile", path: "/profile" },
-  ];
-
-  const isActive = (path: string) => location.pathname === path;
+export default function Sidebar() {
+  const { isAuthenticated } = useAuth();
 
   return (
-    <div className="flex h-full w-64 flex-col bg-black p-3 text-white">
+    <aside className="flex flex-col bg-[#000000] w-60 shrink-0 h-full overflow-hidden">
       {/* Logo */}
-      <div className="mb-8 px-4 pt-4">
-        <h1 className="text-3xl font-bold tracking-tighter text-green-500">
-          TuneVault
-        </h1>
+      <div className="px-6 pt-6 pb-4">
+        <span className="text-xl font-bold text-white tracking-tight">
+          🎵 TuneVault
+        </span>
       </div>
 
-      {/* Main Menu */}
-      <div className="px-2 mb-6">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-4 rounded-lg px-4 py-3 text-base mb-1 transition-all ${
-                isActive(item.path)
-                  ? "bg-[#282828] font-semibold text-white"
-                  : "text-gray-400 hover:bg-[#282828] hover:text-white"
-              }`}
-            >
-              <Icon size={22} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
+      {/* Main nav */}
+      <nav className="px-3">
+        {navItems.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            className={({ isActive }) =>
+              [
+                'flex items-center gap-4 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-150',
+                isActive
+                  ? 'text-white'
+                  : 'text-[#b3b3b3] hover:text-white',
+              ].join(' ')
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+                {label}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
 
-      <div className="px-4 text-xs font-semibold text-gray-500 mb-2">
-        SOCIAL
-      </div>
+      <div className="h-px bg-[#282828] mx-3 my-3" />
 
-      {/* Social Menu */}
-      <div className="px-2">
-        {socialItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center justify-between rounded-lg px-4 py-3 text-base mb-1 transition-all ${
-                isActive(item.path)
-                  ? "bg-[#282828] font-semibold text-white"
-                  : "text-gray-400 hover:bg-[#282828] hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <Icon size={22} />
-                <span>{item.label}</span>
-              </div>
+      {/* Library actions */}
+      {isAuthenticated && (
+        <nav className="px-3">
+          <NavLink
+            to="/library/upload"
+            className="flex items-center gap-4 px-3 py-2.5 rounded-md text-sm font-medium text-[#b3b3b3] hover:text-white transition-colors"
+          >
+            <PlusSquare size={20} strokeWidth={1.8} />
+            Tạo playlist
+          </NavLink>
+          <NavLink
+            to="/library/favorites"
+            className="flex items-center gap-4 px-3 py-2.5 rounded-md text-sm font-medium text-[#b3b3b3] hover:text-white transition-colors"
+          >
+            <Heart size={20} strokeWidth={1.8} />
+            Bài hát yêu thích
+          </NavLink>
+        </nav>
+      )}
 
-              {/* Badge */}
-              {item.hasBadge && unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+      <div className="h-px bg-[#282828] mx-3 my-3" />
+
+      {/* Playlist shortcuts — Person B sẽ bổ sung dynamic list */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4">
+        <p className="text-xs text-[#6b6b6b] px-3 mb-2 uppercase tracking-widest">Playlist</p>
+        {/* TODO: render danh sách playlist của user */}
       </div>
-    </div>
+    </aside>
   );
-};
-
-export default Sidebar;
+}

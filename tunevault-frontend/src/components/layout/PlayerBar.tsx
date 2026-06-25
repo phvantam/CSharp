@@ -1,221 +1,103 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Shuffle,
-  Volume2,
-  ListMusic,
-} from "lucide-react";
-import { usePlayerStore } from "../../stores/playerStore";
-import Queue from "../player/Queue";
+import { SkipBack, SkipForward, Play, Pause, Volume2, VolumeX, Shuffle, Repeat } from 'lucide-react';
+import { usePlayer } from '../../contexts/PlayerContext';
 
-const PlayerBar = () => {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [showQueue, setShowQueue] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+function formatTime(sec: number) {
+  if (!sec || isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
+export default function PlayerBar() {
   const {
-    currentTrack,
-    isPlaying,
-    progress,
-    volume,
-    repeatMode,
-    shuffle,
-    togglePlay,
-    setProgress,
-    setVolume,
-    nextTrack,
-    previousTrack,
-    setRepeatMode,
-    toggleShuffle,
-  } = usePlayerStore();
+    currentTrack, isPlaying, currentTime, duration,
+    volume, isMuted, togglePlay, next, prev, seek, setVolume, toggleMute,
+  } = usePlayer();
 
-  // Phát / Dừng
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-    if (isPlaying) {
-      audio.play().catch(console.error);
-    } else {
-      audio.pause();
-    }
-  }, [isPlaying, currentTrack]);
-
-  // Cập nhật thời gian thực
-  const handleTimeUpdate = () => {
-    const audio = audioRef.current;
-    if (audio && audio.duration) {
-      const currentProgress = (audio.currentTime / audio.duration) * 100;
-      setProgress(currentProgress);
-      setCurrentTime(audio.currentTime);
-    }
-  };
-
-  useEffect(() => {
-    if (currentTrack?.id) {
-      import("../../api/playHistoryService").then(({ playHistoryService }) => {
-        playHistoryService.recordPlay(currentTrack.id);
-      });
-    }
-  }, [currentTrack?.id]);
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-
-    const newProgress = parseFloat(e.target.value);
-    audio.currentTime = (newProgress / 100) * audio.duration;
-    setProgress(newProgress);
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (audioRef.current) audioRef.current.volume = newVolume / 100;
-  };
-
-  const toggleRepeat = () => {
-    const modes: ("off" | "all" | "one")[] = ["off", "all", "one"];
-    const currentIndex = modes.indexOf(repeatMode);
-    setRepeatMode(modes[(currentIndex + 1) % 3]);
-  };
-
-  const formatTime = (seconds: number) => {
-    const min = Math.floor(seconds / 60);
-    const sec = Math.floor(seconds % 60);
-    return `${min}:${sec.toString().padStart(2, "0")}`;
-  };
-
-  if (!currentTrack) {
-    return (
-      <div className="flex h-20 items-center justify-center border-t border-[#282828] bg-[#181818] text-sm text-gray-400">
-        Chọn bài hát để bắt đầu phát
-      </div>
-    );
-  }
+  if (!currentTrack) return null;
 
   return (
-    <div className="flex h-20 items-center border-t border-[#282828] bg-[#181818] px-4 text-white relative">
-      {/* Track Info */}
-      <div className="flex w-1/4 items-center gap-4">
-        <div className="h-14 w-14 rounded overflow-hidden bg-[#282828]">
-          {currentTrack.thumbnailUrl && (
-            <img
-              src={currentTrack.thumbnailUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          )}
+    <footer className="h-[90px] bg-[#181818] border-t border-[#282828] flex items-center px-4 gap-4 shrink-0 z-20">
+      {/* Track info */}
+      <div className="flex items-center gap-3 w-56 shrink-0">
+        <div className="w-14 h-14 rounded bg-[#282828] overflow-hidden shrink-0">
+          {currentTrack.coverUrl
+            ? <img src={currentTrack.coverUrl} alt={currentTrack.title} className="w-full h-full object-cover" />
+            : <div className="w-full h-full flex items-center justify-center text-2xl">♪</div>
+          }
         </div>
         <div className="min-w-0">
-          <p className="font-medium truncate">{currentTrack.title}</p>
-          <p className="text-sm text-gray-400 truncate">
-            {currentTrack.artist}
-          </p>
+          <p className="text-sm font-medium text-white truncate">{currentTrack.title}</p>
+          <p className="text-xs text-[#b3b3b3] truncate">{currentTrack.artist}</p>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="flex w-2/4 flex-col items-center">
-        <div className="flex items-center gap-5 mb-1">
-          <button
-            onClick={toggleShuffle}
-            className={
-              shuffle ? "text-green-500" : "text-gray-400 hover:text-white"
-            }
-          >
-            <Shuffle size={18} />
+      <div className="flex-1 flex flex-col items-center gap-1.5">
+        <div className="flex items-center gap-5">
+          <button className="text-[#b3b3b3] hover:text-white transition-colors">
+            <Shuffle size={16} />
           </button>
-          <button
-            onClick={previousTrack}
-            className="text-gray-400 hover:text-white"
-          >
+          <button onClick={prev} className="text-[#b3b3b3] hover:text-white transition-colors">
             <SkipBack size={20} />
           </button>
           <button
             onClick={togglePlay}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white text-black hover:scale-105"
+            className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform"
           >
-            {isPlaying ? (
-              <Pause size={22} />
-            ) : (
-              <Play size={22} className="ml-0.5" />
-            )}
+            {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
           </button>
-          <button
-            onClick={nextTrack}
-            className="text-gray-400 hover:text-white"
-          >
+          <button onClick={next} className="text-[#b3b3b3] hover:text-white transition-colors">
             <SkipForward size={20} />
           </button>
-          <button
-            onClick={toggleRepeat}
-            className={
-              repeatMode !== "off"
-                ? "text-green-500"
-                : "text-gray-400 hover:text-white"
-            }
-          >
-            <Repeat size={18} />
+          <button className="text-[#b3b3b3] hover:text-white transition-colors">
+            <Repeat size={16} />
           </button>
         </div>
 
-        {/* Progress Bar */}
-        <div className="flex items-center gap-2 w-full max-w-lg text-xs text-gray-400">
-          <span>{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={progress}
-            onChange={handleSeek}
-            className="flex-1 accent-green-500 cursor-pointer"
-          />
-          <span>{formatTime(currentTrack.duration)}</span>
+        {/* Progress bar */}
+        <div className="flex items-center gap-2 w-full max-w-lg">
+          <span className="text-[10px] text-[#b3b3b3] w-8 text-right tabular-nums">
+            {formatTime(currentTime)}
+          </span>
+          <div className="relative flex-1 h-1 bg-[#4d4d4d] rounded-full group cursor-pointer"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const ratio = (e.clientX - rect.left) / rect.width;
+              seek(ratio * duration);
+            }}
+          >
+            <div
+              className="absolute left-0 top-0 h-full bg-white group-hover:bg-[#1db954] rounded-full transition-colors"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-[#b3b3b3] w-8 tabular-nums">
+            {formatTime(duration)}
+          </span>
         </div>
       </div>
 
-      {/* Volume + Queue */}
-      <div className="flex w-1/4 justify-end items-center gap-4 text-gray-400">
-        <button
-          onClick={() => setShowQueue(!showQueue)}
-          className={`hover:text-white transition ${showQueue ? "text-green-500" : ""}`}
-        >
-          <ListMusic size={20} />
+      {/* Volume */}
+      <div className="flex items-center gap-2 w-36 shrink-0 justify-end">
+        <button onClick={toggleMute} className="text-[#b3b3b3] hover:text-white transition-colors">
+          {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
         </button>
-
-        <div className="flex items-center gap-2">
-          <Volume2 size={18} />
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={volume}
-            onChange={handleVolumeChange}
-            className="w-24 accent-green-500"
+        <div
+          className="relative flex-1 h-1 bg-[#4d4d4d] rounded-full group cursor-pointer"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setVolume(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
+          }}
+        >
+          <div
+            className="absolute left-0 top-0 h-full bg-white group-hover:bg-[#1db954] rounded-full transition-colors"
+            style={{ width: `${isMuted ? 0 : volume * 100}%` }}
           />
         </div>
       </div>
-
-      <audio
-        ref={audioRef}
-        src={currentTrack.audioUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={nextTrack}
-      />
-
-      {/* Queue Panel */}
-      {showQueue && (
-        <div className="absolute bottom-[80px] right-4 w-80 bg-[#181818] border border-[#282828] rounded-xl shadow-2xl z-50 max-h-[400px] overflow-hidden">
-          <Queue />
-        </div>
-      )}
-    </div>
+    </footer>
   );
-};
-
-export default PlayerBar;
+}
