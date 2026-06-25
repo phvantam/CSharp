@@ -4,11 +4,14 @@ export interface UserDto {
   email: string;
   avatarUrl?: string;
   bio?: string;
-  createdAt: string;
+  createdAt?: string;
+  followerCount?: number;
+  followingCount?: number;
+  isFollowing?: boolean;
 }
 
 export interface LoginRequest {
-  email: string;
+  loginIdentifier: string;
   password: string;
 }
 

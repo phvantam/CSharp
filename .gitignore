@@ -1,7 +1,27 @@
-tunevault-frontend/node_modules/
-tunevault-frontend/dist/
-tunevault-frontend/build/
-tunevault-frontend/.env
-tunevault-frontend/.env.local
-tunevault-frontend/.vscode/
-*.log
+# Frontend
+node_modules/
+dist/
+.env
+.env.local
+
+# Backend .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ignore large media files
+tunevault-backend/TuneVault.API/wwwroot/media/
+tunevault-frontend/public/audio/
+tunevault-frontend/public/videos/
+*.mp4
+*.mp3
+*.wav
+*.flac
+*.mkv
+*.mov

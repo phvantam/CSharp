@@ -18,6 +18,12 @@ import ProfilePage from "./pages/profile/ProfilePage";
 import VideoPlayerPage from "./pages/video/VideoPlayerPage";
 import UploadPage from "./pages/upload/UploadPage";
 import AIChatbot from "./pages/ai/AIChatbot";
+import PublicProfilePage from "./pages/profile/PublicProfilePage";
+import RecentlyPlayedPage from "./pages/history/RecentlyPlayedPage";
+import NowPlayingPage from "./pages/player/NowPlayingPage";
+import AlbumDetailPage from "./pages/album/AlbumDetailPage";
+import ArtistDetailPage from "./pages/artist/ArtistDetailPage";
+import MediaDetailPage from "./pages/media/MediaDetailPage";
 
 function App() {
   return (
@@ -35,13 +41,20 @@ function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/library" element={<LibraryPage />} />
+          <Route path="/history" element={<RecentlyPlayedPage />} />
           <Route path="/playlist/:id" element={<PlaylistDetailPage />} />
           <Route path="/share-inbox" element={<ShareInboxPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/video/:id" element={<VideoPlayerPage />} />
+          <Route path="/now-playing/:id" element={<NowPlayingPage />} />
+          <Route path="/now-playing" element={<NowPlayingPage />} />
+          <Route path="/album/:id" element={<AlbumDetailPage />} />
+          <Route path="/artist/:id" element={<ArtistDetailPage />} />
+          <Route path="/media/:id" element={<MediaDetailPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/ai-chat" element={<AIChatbot />} />
+          <Route path="/profile/:userId" element={<PublicProfilePage />} />
         </Route>
       </Route>
 

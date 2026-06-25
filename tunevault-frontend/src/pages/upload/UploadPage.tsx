@@ -1,73 +1,181 @@
-import { useState } from "react";
-import { Upload, Music, Video, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Upload,
+  Music,
+  Film,
+  Image as ImageIcon,
+  X,
+  CheckCircle2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import axiosInstance from "../../api/axiosInstance";
+import ImageAdjustModal from "../../components/common/ImageAdjustModal";
+
+const GENRES = [
+  "V-Pop",
+  "Ballad",
+  "Rap",
+  "R&B",
+  "EDM/Dance",
+  "Rock",
+  "Indie",
+  "Acoustic",
+  "Lofi/Chill",
+  "OST",
+  "Remix",
+];
 
 const UploadPage = () => {
-  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
   const [artist, setArtist] = useState("");
-  const [visibility, setVisibility] = useState<"Public" | "Private">("Public");
+  const [genre, setGenre] = useState("");
+
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState("");
+  const [thumbnailCropTarget, setThumbnailCropTarget] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
+
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+  const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+  const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
-  const handleFile = (selectedFile: File) => {
-    if (
-      !selectedFile.type.startsWith("audio/") &&
-      !selectedFile.type.startsWith("video/")
-    ) {
-      toast.error("Chỉ hỗ trợ file audio và video");
+  useEffect(() => {
+    return () => {
+      if (thumbnailPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(thumbnailPreviewUrl);
+      }
+
+      if (thumbnailCropTarget?.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(thumbnailCropTarget.previewUrl);
+      }
+    };
+  }, [thumbnailPreviewUrl, thumbnailCropTarget]);
+
+  const getNameWithoutExtension = (file: File) => {
+    return file.name.replace(/\.[^/.]+$/, "");
+  };
+
+  const handleFileSelect = (
+    file: File,
+    type: "audio" | "video" | "thumbnail",
+  ) => {
+    if (type === "thumbnail") {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Thumbnail chỉ được chọn file ảnh");
+        return;
+      }
+
+      if (file.size > MAX_IMAGE_SIZE) {
+        toast.error("Ảnh bìa tối đa 10MB");
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      setThumbnailCropTarget({ file, previewUrl });
       return;
     }
 
-    if (selectedFile.size > MAX_FILE_SIZE) {
-      toast.error("File quá lớn (tối đa 50MB)");
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File quá lớn (tối đa 200MB)");
       return;
     }
 
-    setFile(selectedFile);
+    if (type === "audio" && !file.type.startsWith("audio/")) {
+      toast.error("File audio không hợp lệ");
+      return;
+    }
 
-    if (!title) {
-      const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
-      setTitle(nameWithoutExt);
+    if (type === "video" && !file.type.startsWith("video/")) {
+      toast.error("File video không hợp lệ");
+      return;
+    }
+
+    const autoName = getNameWithoutExtension(file);
+
+    if (type === "audio") {
+      setAudioFile(file);
+      if (!title.trim()) setTitle(autoName);
+    }
+
+    if (type === "video") {
+      setVideoFile(file);
+      if (!title.trim()) setTitle(autoName);
+      if (!videoTitle.trim()) setVideoTitle(autoName);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) handleFile(selectedFile);
+  const removeFile = (type: "audio" | "video" | "thumbnail") => {
+    if (type === "audio") setAudioFile(null);
+
+    if (type === "video") {
+      setVideoFile(null);
+      setVideoTitle("");
+    }
+
+    if (type === "thumbnail") {
+      if (thumbnailPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(thumbnailPreviewUrl);
+      }
+
+      setThumbnailFile(null);
+      setThumbnailPreviewUrl("");
+    }
   };
 
-  // Drag & Drop
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
+  const closeThumbnailCrop = () => {
+    if (thumbnailCropTarget?.previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(thumbnailCropTarget.previewUrl);
+    }
+
+    setThumbnailCropTarget(null);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const applyThumbnailCrop = (file: File, previewUrl: string) => {
+    if (thumbnailPreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(thumbnailPreviewUrl);
+    }
+
+    if (thumbnailCropTarget?.previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(thumbnailCropTarget.previewUrl);
+    }
+
+    setThumbnailFile(file);
+    setThumbnailPreviewUrl(previewUrl);
+    setThumbnailCropTarget(null);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) handleFile(droppedFile);
-  };
-
-  const removeFile = () => {
-    setFile(null);
+  const resetForm = () => {
     setTitle("");
+    setVideoTitle("");
+    setArtist("");
+    setGenre("");
+    setAudioFile(null);
+    setVideoFile(null);
+    setThumbnailFile(null);
+
+    if (thumbnailPreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(thumbnailPreviewUrl);
+    }
+
+    setThumbnailPreviewUrl("");
+    setProgress(0);
   };
 
-  // ==================== KẾT NỐI API THẬT ====================
   const handleUpload = async () => {
-    if (!file || !title.trim()) {
-      toast.error("Vui lòng chọn file và nhập tên bài hát");
+    if (!title.trim()) {
+      toast.error("Vui lòng nhập tên media");
+      return;
+    }
+
+    if (!audioFile && !videoFile) {
+      toast.error("Vui lòng chọn ít nhất 1 file Audio hoặc Video");
       return;
     }
 
@@ -76,174 +184,359 @@ const UploadPage = () => {
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+
       formData.append("title", title.trim());
       formData.append("artist", artist.trim());
-      formData.append("visibility", visibility);
+      if (genre.trim()) formData.append("genre", genre.trim());
 
-      await axiosInstance.post("/media/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      if (videoFile) {
+        formData.append("videoTitle", videoTitle.trim() || title.trim());
+      }
+
+      if (thumbnailFile) formData.append("thumbnailFile", thumbnailFile);
+      if (audioFile) formData.append("audioFile", audioFile);
+      if (videoFile) formData.append("videoFile", videoFile);
+
+      await axiosInstance.post("/media/upload-multi", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
-            const percentCompleted = Math.round(
+            const percent = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total,
             );
-            setProgress(percentCompleted);
+            setProgress(percent);
           }
         },
       });
 
-      toast.success("Upload thành công!");
-
-      // Reset form
-      setFile(null);
-      setTitle("");
-      setArtist("");
-      setProgress(0);
+      toast.success("Upload media thành công!");
+      resetForm();
     } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error(
-        error.response?.data?.message || "Upload thất bại. Vui lòng thử lại.",
-      );
+      toast.error(error.response?.data?.message || "Upload thất bại");
     } finally {
       setIsUploading(false);
     }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8 flex items-center gap-3">
-        <Upload className="text-green-500" /> Upload Media
-      </h1>
+  const formatSize = (file?: File | null) => {
+    if (!file) return "";
+    const mb = file.size / 1024 / 1024;
+    return `${mb.toFixed(1)} MB`;
+  };
 
-      <div className="bg-[#181818] rounded-2xl p-8">
-        {/* Upload Area */}
-        {!file ? (
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl h-72 cursor-pointer transition-all ${
-              isDragging
-                ? "border-green-500 bg-[#282828]"
-                : "border-[#282828] hover:border-green-500"
-            }`}
-          >
-            <label className="flex flex-col items-center cursor-pointer w-full h-full justify-center">
-              <Upload size={52} className="text-gray-400 mb-4" />
-              <p className="text-xl font-medium">Kéo thả file vào đây</p>
-              <p className="text-gray-400 mt-1">hoặc click để chọn file</p>
-              <p className="text-sm text-gray-500 mt-2">
-                MP3, MP4, WAV • Tối đa 50MB
-              </p>
-              <input
-                type="file"
-                accept="audio/*,video/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-          </div>
-        ) : (
-          /* File Info */
-          <div className="bg-[#282828] rounded-xl p-5 mb-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                {file.type.startsWith("audio") ? (
-                  <Music size={40} className="text-green-400" />
-                ) : (
-                  <Video size={40} className="text-purple-400" />
-                )}
-                <div>
-                  <p className="font-semibold text-lg">{file.name}</p>
-                  <p className="text-sm text-gray-400">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={removeFile}
-                className="text-red-400 hover:text-red-500"
-              >
-                <X size={22} />
-              </button>
+  const FileBox = ({
+    type,
+    file,
+    icon,
+    title,
+    subtitle,
+    accept,
+    previewUrl,
+  }: {
+    type: "audio" | "video" | "thumbnail";
+    file: File | null;
+    icon: React.ReactNode;
+    title: string;
+    subtitle: string;
+    accept: string;
+    previewUrl?: string;
+  }) => {
+    if (file && type === "thumbnail") {
+      return (
+        <label className="group relative flex min-h-[190px] cursor-pointer overflow-hidden rounded-2xl border border-green-500/30 bg-[#111]">
+          <input
+            type="file"
+            accept={accept}
+            onChange={(e) =>
+              e.target.files?.[0] && handleFileSelect(e.target.files[0], type)
+            }
+            className="hidden"
+          />
+
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt={file.name}
+              className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+              <ImageIcon size={42} />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Form */}
-        {file && (
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1.5">
-                Tên bài hát / Video *
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
+
+          <div className="relative z-10 mt-auto flex w-full items-end justify-between gap-3 p-4">
+            <div className="min-w-0 text-left">
+              <p className="truncate font-bold text-white">{file.name}</p>
+              <p className="mt-1 text-sm text-gray-300">
+                {formatSize(file)} · Bấm để đổi ảnh
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                removeFile(type);
+              }}
+              className="shrink-0 rounded-full bg-black/45 p-2 text-gray-200 transition hover:bg-red-500 hover:text-white"
+              title="Xóa ảnh"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </label>
+      );
+    }
+
+    if (file) {
+      return (
+        <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-500/20 text-green-400">
+              <CheckCircle2 size={22} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold text-white">{file.name}</p>
+              <p className="mt-1 text-sm text-gray-400">{formatSize(file)}</p>
+
+              {type === "video" && (
+                <p className="mt-2 truncate text-sm text-purple-300">
+                  Tên video: {videoTitle.trim() || title || "Chưa đặt"}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => removeFile(type)}
+              className="rounded-full p-2 text-gray-400 transition hover:bg-red-500/15 hover:text-red-400"
+              title="Xóa file"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <label className="group flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#333] bg-[#111] p-5 text-center transition hover:border-green-500/70 hover:bg-green-500/5">
+        <input
+          type="file"
+          accept={accept}
+          onChange={(e) =>
+            e.target.files?.[0] && handleFileSelect(e.target.files[0], type)
+          }
+          className="hidden"
+        />
+
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#282828] text-gray-300 transition group-hover:bg-green-500/15 group-hover:text-green-400">
+          {icon}
+        </div>
+
+        <p className="font-semibold text-gray-200">{title}</p>
+        <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+      </label>
+    );
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-5xl">
+      <div className="mb-8 flex items-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/15 text-green-400">
+          <Upload size={30} />
+        </div>
+
+        <div>
+          <h1 className="text-4xl font-black text-white sm:text-5xl">
+            Upload Media
+          </h1>
+          <p className="mt-1 text-sm text-gray-400">Tải lên audio - video</p>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-[#242424] bg-[#181818] shadow-2xl">
+        <div className="border-b border-[#242424] bg-[#151515] px-6 py-5 sm:px-8">
+          <h2 className="text-xl font-bold text-white">THÔNG TIN BÀI HÁT</h2>
+          <p className="mt-1 text-sm text-gray-400"></p>
+        </div>
+
+        <div className="space-y-8 p-6 sm:p-8">
+          <div className="grid gap-5 lg:grid-cols-3">
+            {/* Hàng 1: Tên bài hát + Thể loại */}
+            <div className="lg:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-gray-300">
+                Tên bài hát <span className="text-green-400">*</span>
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="Nhập tên bài hát"
+                className="w-full rounded-2xl bg-[#282828] px-5 py-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Ví dụ: Không Thể Say"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">
+              <label className="mb-2 block text-sm font-semibold text-gray-300">
+                Thể loại
+              </label>
+              <select
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                className="w-full rounded-2xl bg-[#282828] px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">Chọn thể loại</option>
+                {GENRES.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Hàng 2: Tên video + Nghệ sĩ */}
+            <div className="lg:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-gray-300">
+                Tên video
+              </label>
+              <input
+                type="text"
+                value={videoTitle}
+                onChange={(e) => setVideoTitle(e.target.value)}
+                className="w-full rounded-2xl bg-[#282828] px-5 py-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Có thể để trống. Nếu có MV, trang video sẽ dùng tên này."
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Ví dụ: MV Không Thể Say Official. Nếu để trống, video sẽ dùng
+                tên media phía trên.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-300">
                 Nghệ sĩ
+                <span className="ml-1 text-xs font-normal text-gray-500">
+                  (nhiều nghệ sĩ cách nhau bằng dấu phẩy)
+                </span>
               </label>
               <input
                 type="text"
                 value={artist}
                 onChange={(e) => setArtist(e.target.value)}
-                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="Tên nghệ sĩ"
+                className="w-full rounded-2xl bg-[#282828] px-5 py-4 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Ví dụ: Tóc Tiên, MAIQUINN, Mượii, DTAP"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[1.1fr_1.4fr]">
+            <div>
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300">
+                <ImageIcon size={17} />
+                Ảnh bìa
+                <span className="rounded-full bg-[#282828] px-2 py-0.5 text-xs text-gray-400">
+                  Tùy chọn
+                </span>
+              </div>
+
+              <FileBox
+                type="thumbnail"
+                file={thumbnailFile}
+                icon={<ImageIcon size={27} />}
+                title="Chọn ảnh bìa"
+                subtitle="Chỉ nhận file ảnh"
+                accept="image/*"
+                previewUrl={thumbnailPreviewUrl}
               />
             </div>
 
-            <div>
-              <label className="block text-sm text-gray-400 mb-1.5">
-                Quyền riêng tư
-              </label>
-              <select
-                value={visibility}
-                onChange={(e) =>
-                  setVisibility(e.target.value as "Public" | "Private")
-                }
-                className="w-full bg-[#282828] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value="Public">Công khai</option>
-                <option value="Private">Riêng tư</option>
-              </select>
-            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300">
+                  <Music size={17} />
+                  File Audio
+                  <span className="rounded-full bg-[#282828] px-2 py-0.5 text-xs text-gray-400">
+                    Tùy chọn
+                  </span>
+                </div>
 
-            {/* Progress Bar */}
-            {isUploading && (
-              <div className="pt-2">
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Đang tải lên...</span>
-                  <span>{Math.round(progress)}%</span>
-                </div>
-                <div className="w-full bg-[#282828] rounded-full h-2.5">
-                  <div
-                    className="bg-green-500 h-2.5 rounded-full transition-all duration-200"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
+                <FileBox
+                  type="audio"
+                  file={audioFile}
+                  icon={<Music size={28} />}
+                  title="Chọn file audio"
+                  subtitle="MP3, WAV, M4A..."
+                  accept="audio/*"
+                />
               </div>
-            )}
 
-            <button
-              onClick={handleUpload}
-              disabled={isUploading || !title.trim()}
-              className="w-full py-3.5 mt-2 bg-green-500 hover:bg-green-400 disabled:bg-gray-600 text-black font-semibold rounded-full transition disabled:cursor-not-allowed"
-            >
-              {isUploading ? "Đang upload..." : "Upload Media"}
-            </button>
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-300">
+                  <Film size={17} />
+                  File Video
+                  <span className="rounded-full bg-[#282828] px-2 py-0.5 text-xs text-gray-400">
+                    Tùy chọn
+                  </span>
+                </div>
+
+                <FileBox
+                  type="video"
+                  file={videoFile}
+                  icon={<Film size={28} />}
+                  title="Chọn file video"
+                  subtitle="MP4, MOV, WEBM..."
+                  accept="video/*"
+                />
+              </div>
+            </div>
           </div>
-        )}
+
+          {isUploading && (
+            <div className="rounded-2xl bg-[#111] p-4">
+              <div className="mb-2 flex justify-between text-sm text-gray-300">
+                <span>Đang upload...</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#282828]">
+                <div
+                  className="h-full rounded-full bg-green-500 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={
+              isUploading || !title.trim() || (!audioFile && !videoFile)
+            }
+            className="flex w-full items-center justify-center gap-3 rounded-full bg-green-500 px-6 py-4 text-lg font-black text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-gray-600"
+          >
+            <Upload size={22} />
+            {isUploading ? `Đang upload ${progress}%` : "Upload Media"}
+          </button>
+        </div>
       </div>
+
+      {thumbnailCropTarget && (
+        <ImageAdjustModal
+          imageUrl={thumbnailCropTarget.previewUrl}
+          fileName={thumbnailCropTarget.file.name}
+          variant="square"
+          title="Chỉnh ảnh bìa media"
+          description="Kéo trực tiếp ảnh để căn vị trí ảnh bìa trước khi upload."
+          onClose={closeThumbnailCrop}
+          onApply={applyThumbnailCrop}
+        />
+      )}
     </div>
   );
 };

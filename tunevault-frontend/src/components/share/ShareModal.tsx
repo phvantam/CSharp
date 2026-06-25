@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { X, Search, User } from "lucide-react";
+import {
+  X,
+  Search,
+  User,
+  CheckCircle2,
+  Info,
+  Music2,
+  ListMusic,
+} from "lucide-react";
 import { shareService } from "../../api";
 import toast from "react-hot-toast";
 
@@ -11,6 +19,66 @@ interface ShareModalProps {
   title: string;
 }
 
+interface UserResult {
+  id: string;
+  name: string;
+  username?: string;
+}
+
+type ShareToastType = "success" | "duplicate";
+
+const showShareToast = ({
+  type,
+  contentLabel,
+  receiverName,
+}: {
+  type: ShareToastType;
+  contentLabel: string;
+  receiverName: string;
+}) => {
+  const isDuplicate = type === "duplicate";
+
+  toast.custom(
+    (t) => (
+      <div
+        className={`pointer-events-auto flex w-[390px] max-w-[calc(100vw-32px)] items-center gap-4 rounded-2xl border border-green-400/25 bg-[#102018]/95 px-5 py-4 shadow-2xl shadow-green-950/30 backdrop-blur-xl transition-all duration-300 ${
+          t.visible
+            ? "translate-y-0 scale-100 opacity-100"
+            : "-translate-y-3 scale-95 opacity-0"
+        }`}
+      >
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-green-500/15 text-green-300">
+          {isDuplicate ? <Info size={23} /> : <CheckCircle2 size={23} />}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <span className="mb-1.5 inline-flex rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-bold text-green-200">
+            {isDuplicate ? "Đã chia sẻ trước đó" : "Chia sẻ thành công"}
+          </span>
+
+          <p className="text-[15px] font-semibold leading-snug text-white">
+            {isDuplicate
+              ? `${contentLabel} này đã được chia sẻ cho ${receiverName} rồi`
+              : `Đã chia sẻ ${contentLabel.toLowerCase()} cho ${receiverName}`}
+          </p>
+        </div>
+
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          className="rounded-full p-1.5 text-gray-400 transition hover:bg-white/10 hover:text-white"
+          aria-label="Đóng thông báo"
+        >
+          <X size={17} />
+        </button>
+      </div>
+    ),
+    {
+      duration: isDuplicate ? 3600 : 3200,
+      position: "top-center",
+    },
+  );
+};
+
 const ShareModal = ({
   isOpen,
   onClose,
@@ -19,34 +87,40 @@ const ShareModal = ({
   title,
 }: ShareModalProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUser, setSelectedUser] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const [users, setUsers] = useState<UserResult[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserResult | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Mock danh sách user (sau này sẽ lấy từ API)
-  const allUsers = [
-    { id: "U001", name: "Nguyễn Yến Vy" },
-    { id: "U002", name: "Trần Minh Khang" },
-    { id: "U003", name: "Lê Hoài Linh" },
-    { id: "U004", name: "Phạm Thị Mai" },
-    { id: "U005", name: "Nguyễn Văn An" },
-    { id: "U006", name: "Trần Thị Bình" },
-  ];
-
-  const filteredUsers = searchTerm
-    ? allUsers.filter((user) =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : [];
+  const [searching, setSearching] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSelectUser = (user: { id: string; name: string }) => {
+  const isPlaylistShare = !!playlistId && !mediaItemId;
+  const contentLabel = isPlaylistShare ? "Playlist" : "Bài hát";
+
+  const handleSearch = async (keyword: string) => {
+    setSearchTerm(keyword);
+
+    if (keyword.trim().length < 2) {
+      setUsers([]);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const results = await shareService.searchUsers(keyword.trim());
+      setUsers(results);
+    } catch {
+      setUsers([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSelectUser = (user: UserResult) => {
     setSelectedUser(user);
     setSearchTerm("");
+    setUsers([]);
   };
 
   const handleShare = async () => {
@@ -55,109 +129,170 @@ const ShareModal = ({
       return;
     }
 
-    setLoading(true);
-    try {
-      // TODO: Khi có Backend thật, gọi API:
-      // await shareService.share({
-      //   receiverUserId: selectedUser.id,        // Gửi ID
-      //   receiverUserName: selectedUser.name,    // Gửi thêm tên (nếu backend cần)
-      //   mediaItemId,
-      //   playlistId,
-      //   message: message.trim() || undefined,
-      // });
+    if (!mediaItemId && !playlistId) {
+      toast.error("Không xác định được nội dung cần chia sẻ");
+      return;
+    }
 
-      await shareService.share({
+    setLoading(true);
+
+    try {
+      const result = await shareService.share({
         receiverUserId: selectedUser.id,
         mediaItemId,
         playlistId,
         message: message.trim() || undefined,
       });
 
-      toast.success(`Đã chia sẻ thành công cho ${selectedUser.name}`);
+      if (result?.isDuplicate) {
+        showShareToast({
+          type: "duplicate",
+          contentLabel,
+          receiverName: selectedUser.name,
+        });
+        return;
+      }
+
+      showShareToast({
+        type: "success",
+        contentLabel,
+        receiverName: selectedUser.name,
+      });
+
       onClose();
-      setSearchTerm("");
-      setSelectedUser(null);
-      setMessage("");
-    } catch (error) {
-      toast.error("Chia sẻ thất bại");
+      resetForm();
+    } catch (error: any) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Chia sẻ thất bại. Vui lòng thử lại.";
+
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  const resetForm = () => {
+    setSearchTerm("");
+    setUsers([]);
+    setSelectedUser(null);
+    setMessage("");
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70">
-      <div className="w-full max-w-md rounded-2xl bg-[#181818] p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-xl font-semibold">Chia sẻ "{title}"</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#181818] p-6 shadow-2xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-green-500/15 text-green-300">
+                {isPlaylistShare ? (
+                  <ListMusic size={20} />
+                ) : (
+                  <Music2 size={20} />
+                )}
+              </div>
+
+              <span className="rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-bold text-green-200">
+                {contentLabel}
+              </span>
+            </div>
+
+            <h3 className="text-xl font-bold leading-snug text-white">
+              Chia sẻ "{title}"
+            </h3>
+          </div>
+
+          <button
+            onClick={handleClose}
+            className="rounded-full p-2 text-gray-400 transition hover:bg-white/10 hover:text-white"
+            aria-label="Đóng"
+          >
             <X size={22} />
           </button>
         </div>
 
-        {/* Tìm theo tên người dùng */}
         <div className="mb-4">
-          <label className="text-sm text-gray-400 mb-1.5 block flex items-center gap-2">
+          <label className="mb-1.5 flex items-center gap-2 text-sm text-gray-400">
             <User size={16} /> Tìm người nhận theo tên
           </label>
+
           <div className="relative">
             <Search className="absolute left-3 top-3 text-gray-400" size={18} />
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Nhập tên người dùng..."
-              className="w-full bg-[#282828] pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-white"
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Nhập tên hoặc username..."
+              className="w-full rounded-xl bg-[#282828] py-3 pl-10 pr-4 text-white outline-none transition focus:ring-2 focus:ring-green-500"
             />
           </div>
         </div>
 
-        {/* Danh sách gợi ý theo tên */}
-        {searchTerm && filteredUsers.length > 0 && (
-          <div className="max-h-44 overflow-y-auto mb-4 border border-[#282828] rounded-lg bg-[#202020]">
-            {filteredUsers.map((user) => (
+        {searchTerm && users.length > 0 && (
+          <div className="mb-4 max-h-44 overflow-y-auto rounded-xl border border-[#282828] bg-[#202020]">
+            {users.map((user) => (
               <div
                 key={user.id}
                 onClick={() => handleSelectUser(user)}
-                className="px-4 py-2.5 hover:bg-[#282828] cursor-pointer flex items-center gap-2 text-sm"
+                className="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm transition hover:bg-[#282828]"
               >
-                <User size={16} className="text-gray-400" />
-                {user.name}
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-gray-300">
+                  <User size={17} />
+                </div>
+
+                <div>
+                  <p className="font-semibold text-white">{user.name}</p>
+                  {user.username && (
+                    <p className="text-xs text-gray-500">@{user.username}</p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Hiển thị người đã chọn */}
+        {searchTerm && users.length === 0 && !searching && (
+          <p className="mb-4 rounded-xl bg-white/5 px-4 py-3 text-sm text-gray-400">
+            Không tìm thấy người dùng nào.
+          </p>
+        )}
+
         {selectedUser && (
-          <div className="mb-4 px-3 py-2 bg-[#282828] rounded-lg text-sm">
+          <div className="mb-4 rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-gray-200">
             Đang chia sẻ cho:{" "}
-            <span className="font-semibold text-green-400">
+            <span className="font-bold text-green-300">
               {selectedUser.name}
             </span>
           </div>
         )}
 
-        {/* Tin nhắn */}
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Tin nhắn (tùy chọn)..."
-          className="w-full bg-[#282828] p-3 rounded-lg mb-5 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="mb-5 w-full resize-none rounded-xl bg-[#282828] p-4 text-white outline-none transition focus:ring-2 focus:ring-green-500"
           rows={3}
         />
 
         <div className="flex justify-end gap-3">
           <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-full bg-[#282828] hover:bg-[#3a3a3a] text-sm"
+            onClick={handleClose}
+            className="rounded-full bg-[#282828] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3a3a3a]"
           >
             Hủy
           </button>
+
           <button
             onClick={handleShare}
             disabled={loading || !selectedUser}
-            className="px-5 py-2 rounded-full bg-green-500 text-black font-semibold hover:bg-green-400 disabled:opacity-60 text-sm"
+            className="rounded-full bg-green-500 px-6 py-2.5 text-sm font-bold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Đang gửi..." : "Chia sẻ"}
           </button>

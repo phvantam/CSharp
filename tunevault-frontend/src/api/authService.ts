@@ -1,31 +1,3 @@
-/*import axiosInstance from "./axiosInstance";
-import type {
-  LoginRequest,
-  RegisterRequest,
-  AuthResponse,
-  UserDto,
-} from "./types/user";
-
-export const authService = {
-  async login(data: LoginRequest): Promise<AuthResponse> {
-    const res = await axiosInstance.post("/auth/login", data);
-    return res.data;
-  },
-
-  async register(data: RegisterRequest): Promise<AuthResponse> {
-    const res = await axiosInstance.post("/auth/register", data);
-    return res.data;
-  },
-
-  async getCurrentUser(): Promise<UserDto> {
-    const res = await axiosInstance.get("/auth/me");
-    return res.data.data;
-  },
-
-  async logout() {
-    await axiosInstance.post("/auth/logout");
-  },
-};*/
 import axiosInstance from "./axiosInstance";
 import type {
   LoginRequest,
@@ -35,7 +7,8 @@ import type {
 } from "./types/user";
 
 // ==================== MOCK MODE ====================
-const USE_MOCK = true; // ← Đổi thành false khi có backend thật
+const USE_MOCK = false;
+// ===================================================
 
 const mockUser: UserDto = {
   id: "U001",
@@ -47,29 +20,21 @@ const mockUser: UserDto = {
 };
 
 const mockToken = "mock-jwt-token-for-development-123456";
-// ===================================================
 
 export const authService = {
   async login(data: LoginRequest): Promise<AuthResponse> {
     if (USE_MOCK) {
-      // Giả lập delay như thật
       await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Cho phép đăng nhập với bất kỳ email nào (để test dễ)
       return {
         success: true,
         data: {
           token: mockToken,
-          user: {
-            ...mockUser,
-            email: data.email,
-            displayName: data.email.split("@")[0],
-          },
+          user: mockUser,
         },
       };
     }
 
-    // Gọi API thật khi có backend
+    // Gọi API thật
     const res = await axiosInstance.post<AuthResponse>("/auth/login", data);
     return res.data;
   },
@@ -99,9 +64,7 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    if (USE_MOCK) {
-      return;
-    }
+    if (USE_MOCK) return;
     await axiosInstance.post("/auth/logout");
   },
 };

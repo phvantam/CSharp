@@ -1,25 +1,20 @@
 import { create } from "zustand";
-
-export interface Notification {
-  notificationId: number;
-  title: string;
-  body?: string;
-  isRead: boolean;
-  createdAt: string;
-  type: string;
-}
+import type { NotificationDto } from "../api/notificationService";
 
 interface NotificationState {
-  notifications: Notification[];
+  notifications: NotificationDto[];
   unreadCount: number;
   isConnected: boolean;
 
-  setNotifications: (notifications: Notification[]) => void;
-  addNotification: (notification: Notification) => void;
-  markAsRead: (id: number) => void;
+  setNotifications: (notifications: NotificationDto[]) => void;
+  addNotification: (notification: NotificationDto) => void;
+  markAsRead: (notificationId: number) => void;
   markAllAsRead: () => void;
-  setConnectionStatus: (status: boolean) => void;
+  setConnectionStatus: (isConnected: boolean) => void;
 }
+
+const getUnreadCount = (notifications: NotificationDto[]) =>
+  notifications.filter((notification) => !notification.isRead).length;
 
 export const useNotificationStore = create<NotificationState>((set) => ({
   notifications: [],
@@ -29,34 +24,55 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   setNotifications: (notifications) =>
     set({
       notifications,
-      unreadCount: notifications.filter((n) => !n.isRead).length,
+      unreadCount: getUnreadCount(notifications),
     }),
 
   addNotification: (notification) =>
     set((state) => {
-      const newNotifications = [notification, ...state.notifications];
+      const exists = state.notifications.some(
+        (item) => item.notificationId === notification.notificationId,
+      );
+
+      const notifications = exists
+        ? state.notifications.map((item) =>
+            item.notificationId === notification.notificationId
+              ? { ...item, ...notification }
+              : item,
+          )
+        : [notification, ...state.notifications];
+
       return {
-        notifications: newNotifications,
-        unreadCount: newNotifications.filter((n) => !n.isRead).length,
+        notifications,
+        unreadCount: getUnreadCount(notifications),
       };
     }),
 
-  markAsRead: (id) =>
+  markAsRead: (notificationId) =>
     set((state) => {
-      const updated = state.notifications.map((n) =>
-        n.notificationId === id ? { ...n, isRead: true } : n,
+      const notifications = state.notifications.map((notification) =>
+        notification.notificationId === notificationId
+          ? { ...notification, isRead: true }
+          : notification,
       );
+
       return {
-        notifications: updated,
-        unreadCount: updated.filter((n) => !n.isRead).length,
+        notifications,
+        unreadCount: getUnreadCount(notifications),
       };
     }),
 
   markAllAsRead: () =>
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
-      unreadCount: 0,
-    })),
+    set((state) => {
+      const notifications = state.notifications.map((notification) => ({
+        ...notification,
+        isRead: true,
+      }));
 
-  setConnectionStatus: (status) => set({ isConnected: status }),
+      return {
+        notifications,
+        unreadCount: 0,
+      };
+    }),
+
+  setConnectionStatus: (isConnected) => set({ isConnected }),
 }));

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
+    username: "",
     displayName: "",
     email: "",
     password: "",
@@ -66,7 +67,21 @@ const RegisterPage = () => {
                 required
               />
             </div>
-
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-300">
+                Tên đăng nhập <span className="text-red-400"></span>
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white focus:border-green-500 focus:outline-none"
+                placeholder="nguyenvana"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1"></p>
+            </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
                 Email
@@ -77,7 +92,7 @@ const RegisterPage = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white focus:border-green-500 focus:outline-none"
-                placeholder="you@example.com"
+                placeholder="you@gmail.com"
                 required
               />
             </div>

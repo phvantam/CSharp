@@ -1,13 +1,17 @@
-import { useState } from "react";
-import { Send, Bot, User, Play } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Send, Bot, User, Play, Trash2 } from "lucide-react";
 import { usePlayerStore } from "../../stores/playerStore";
+import { useAuthStore } from "../../stores/authStore";
 import { mediaService } from "../../api";
+import { aiService } from "../../api/aiService";
 
 interface Message {
   id: number;
   text: string;
   isBot: boolean;
-  timestamp: Date; // ← Thêm timestamp
+  timestamp: Date;
+  songs?: Song[];
+  isStreaming?: boolean;
 }
 
 interface Song {
@@ -16,29 +20,345 @@ interface Song {
   artist: string;
 }
 
+const TUNEVAULT_SONGS: Song[] = [
+  { id: 1, title: "Nơi Này Có Anh", artist: "Sơn Tùng M-TP" },
+  { id: 8, title: "Lạ Lùng", artist: "Vũ." },
+  { id: 3, title: "Mang Tiền Về Cho Mẹ", artist: "Đen" },
+  { id: 18, title: "Không Thể Say", artist: "HIEUTHUHAI" },
+  { id: 19, title: "Waiting For You", artist: "MONO" },
+  { id: 2, title: "See Tình", artist: "Hoàng Thùy Linh" },
+  { id: 7, title: "Come My Way", artist: "Sơn Tùng M-TP" },
+  { id: 4, title: "Có Hẹn Với Thanh Xuân", artist: "MONSTAR" },
+  { id: 5, title: "Sau Tất Cả", artist: "ERIK" },
+  { id: 6, title: "Có Chàng Trai Viết Lên Cây", artist: "Phan Mạnh Quỳnh" },
+  { id: 20, title: "Thiệp Hồng Sai Tên", artist: "Nguyễn Thành Đạt" },
+  {
+    id: 21,
+    title: "MASHUP ROCK THIỆP HỒNG",
+    artist: "TÓC TIÊN, MAIQUINN, MUỘI, YEOLAN, ĐÀO TỬ A1J x DTAP",
+  },
+];
+
+const createInitialMessage = (): Message => ({
+  id: 1,
+  text: "Xin chào! Tôi là Music Assistant. Bạn muốn nghe nhạc gì hôm nay?",
+  isBot: true,
+  timestamp: new Date(),
+});
+
+const getUserStorageKey = (user: unknown) => {
+  const currentUser = user as
+    | {
+        id?: string;
+        userId?: string;
+        email?: string;
+        displayName?: string;
+      }
+    | null
+    | undefined;
+
+  const key =
+    currentUser?.id ||
+    currentUser?.userId ||
+    currentUser?.email ||
+    currentUser?.displayName ||
+    "default";
+
+  return `tunevault-ai-chat-history:${key}`;
+};
+
+const GLOBAL_STORAGE_KEY = "tunevault-ai-chat-history:last";
+
 const AIChatbot = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "Xin chào! Tôi là Music Assistant. Bạn muốn nghe nhạc gì hôm nay?",
-      isBot: true,
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([createInitialMessage()]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const playTrack = usePlayerStore((state) => state.playTrack);
 
-  const songDatabase: Song[] = [
-    { id: 1, title: "Nơi Này Có Anh", artist: "Sơn Tùng M-TP" },
-    { id: 8, title: "Lạ Lùng", artist: "Vũ." },
-    { id: 3, title: "Mang Tiền Về Cho Mẹ", artist: "Đen" },
-    { id: 18, title: "Không Thể Say", artist: "HIEUTHUHAI" },
-    { id: 19, title: "Waiting For You", artist: "MONO" },
-    { id: 2, title: "See Tình", artist: "Hoàng Thùy Linh" },
-  ];
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Hàm format thời gian
+  const chatStorageKey = useMemo(() => getUserStorageKey(user), [user]);
+
+  useEffect(() => {
+    const savedByUser = localStorage.getItem(chatStorageKey);
+    const savedGlobal = localStorage.getItem(GLOBAL_STORAGE_KEY);
+    const saved = savedByUser || savedGlobal;
+
+    if (!saved) {
+      setMessages([createInitialMessage()]);
+      setHistoryLoaded(true);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved).map((m: Message) => ({
+        ...m,
+        timestamp: new Date(m.timestamp),
+        isStreaming: false,
+      }));
+
+      setMessages(parsed.length > 0 ? parsed : [createInitialMessage()]);
+    } catch {
+      localStorage.removeItem(chatStorageKey);
+      localStorage.removeItem(GLOBAL_STORAGE_KEY);
+      setMessages([createInitialMessage()]);
+    } finally {
+      setHistoryLoaded(true);
+    }
+  }, [chatStorageKey]);
+
+  useEffect(() => {
+    if (!historyLoaded) return;
+
+    const safeMessages = messages
+      .filter((m) => m.text.trim() || !m.isBot)
+      .map((m) => ({
+        ...m,
+        isStreaming: false,
+      }));
+
+    const value = JSON.stringify(
+      safeMessages.length > 0 ? safeMessages : [createInitialMessage()],
+    );
+
+    localStorage.setItem(chatStorageKey, value);
+    localStorage.setItem(GLOBAL_STORAGE_KEY, value);
+  }, [chatStorageKey, historyLoaded, messages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  const buildMediaAwarePrompt = (userMessage: string) => {
+    const availableSongs = TUNEVAULT_SONGS.map(
+      (song) => `- ${song.title} - ${song.artist}`,
+    ).join("\n");
+
+    return `
+DỮ LIỆU KHO MEDIA HIỆN CÓ TRÊN TUNEVAULT:
+${availableSongs}
+
+QUY TẮC BẮT BUỘC:
+- Nếu người dùng hỏi/gợi ý thể loại hoặc bài hát có trong danh sách trên, hãy ưu tiên gợi ý các bài hát đang có trên TuneVault.
+- Nếu người dùng hỏi bài hát/thể loại mà TuneVault hiện chưa có, phải nói rõ: "Hiện tại TuneVault chưa có các bài hát đó."
+- Sau đó có thể đề xuất một vài bài hát ngoài web thật để người dùng tham khảo, nhưng phải nói rõ đó là bài tham khảo bên ngoài TuneVault.
+- Không được nói rằng TuneVault có bài hát nếu bài đó không nằm trong danh sách kho media ở trên.
+- Trả lời ngắn gọn, tối đa 10 dòng.
+- Không dùng gạch đầu dòng, có thể đánh số thứ tự.
+- Nếu gợi ý bài hát thì ghi dạng: **Tên bài** - Nghệ sĩ.
+
+YÊU CẦU NGƯỜI DÙNG:
+${userMessage}
+`.trim();
+  };
+
+  const extractSongsFromText = (text: string): Song[] => {
+    const lowerText = text.toLowerCase();
+
+    return TUNEVAULT_SONGS.filter((song) =>
+      lowerText.includes(song.title.toLowerCase()),
+    );
+  };
+
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const formatMessageText = (text: string) => {
+    return escapeHtml(text)
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-green-300">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em class="text-gray-200">$1</em>')
+      .replace(/\n/g, "<br />");
+  };
+
+  const getApiBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL || "http://localhost:5090";
+    return envUrl.replace(/\/$/, "");
+  };
+
+  const updateBotMessage = (
+    botMessageId: number,
+    updater: (message: Message) => Message,
+  ) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === botMessageId ? updater(m) : m)),
+    );
+  };
+
+  const handleSsePayload = (
+    payload: string,
+    botMessageId: number,
+    fullTextRef: { current: string },
+  ) => {
+    if (!payload || payload === "[DONE]") return;
+
+    let chunk = payload;
+
+    try {
+      chunk = JSON.parse(payload);
+    } catch {
+      // Cho phép backend gửi plain text.
+    }
+
+    if (!chunk) return;
+
+    fullTextRef.current += chunk;
+
+    updateBotMessage(botMessageId, (m) => ({
+      ...m,
+      text: fullTextRef.current,
+      songs: extractSongsFromText(fullTextRef.current),
+    }));
+  };
+
+  const sendStreamingMessage = async (
+    userMessageText: string,
+    botMessageId: number,
+  ) => {
+    const response = await fetch(`${getApiBaseUrl()}/api/ai/chat/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        message: buildMediaAwarePrompt(userMessageText),
+      }),
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`Stream endpoint failed: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+    const fullTextRef = { current: "" };
+
+    while (true) {
+      const { value, done } = await reader.read();
+
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+
+      for (const event of events) {
+        const lines = event.split("\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+
+          const payload = line.replace(/^data:\s?/, "").trim();
+
+          if (payload === "[DONE]") return;
+
+          handleSsePayload(payload, botMessageId, fullTextRef);
+        }
+      }
+    }
+  };
+
+  const sendNormalMessageFallback = async (
+    userMessageText: string,
+    botMessageId: number,
+  ) => {
+    const reply = await aiService.chat(buildMediaAwarePrompt(userMessageText));
+
+    const botText =
+      reply?.trim() ||
+      "Mình chưa nhận được phản hồi từ AI. Bạn thử lại sau nhé.";
+
+    updateBotMessage(botMessageId, (m) => ({
+      ...m,
+      text: botText,
+      songs: extractSongsFromText(botText),
+      isStreaming: false,
+    }));
+  };
+
+  const handleSend = async () => {
+    const messageText = input.trim();
+    if (!messageText || isTyping) return;
+
+    const userMessage: Message = {
+      id: Date.now(),
+      text: messageText,
+      isBot: false,
+      timestamp: new Date(),
+    };
+
+    const botMessageId = Date.now() + 1;
+
+    const botMessage: Message = {
+      id: botMessageId,
+      text: "",
+      isBot: true,
+      timestamp: new Date(),
+      isStreaming: true,
+    };
+
+    setMessages((prev) => [...prev, userMessage, botMessage]);
+    setInput("");
+    setIsTyping(true);
+
+    try {
+      try {
+        await sendStreamingMessage(messageText, botMessageId);
+      } catch (streamError) {
+        console.warn("SSE lỗi, chuyển sang chat thường:", streamError);
+        await sendNormalMessageFallback(messageText, botMessageId);
+      }
+
+      updateBotMessage(botMessageId, (m) => ({
+        ...m,
+        isStreaming: false,
+        songs: extractSongsFromText(m.text),
+      }));
+    } catch (error) {
+      console.error("AI chat error:", error);
+
+      updateBotMessage(botMessageId, (m) => ({
+        ...m,
+        text:
+          m.text ||
+          "Hiện tại Music Assistant chưa kết nối được với AI. Bạn thử lại sau nhé.",
+        isStreaming: false,
+      }));
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handlePlaySong = (song: Song) => {
+    playTrack({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      duration: 0,
+      audioUrl: mediaService.getStreamUrl(song.id),
+    });
+  };
+
+  const clearChat = () => {
+    const initial = createInitialMessage();
+    const value = JSON.stringify([initial]);
+
+    setMessages([initial]);
+    localStorage.setItem(chatStorageKey, value);
+    localStorage.setItem(GLOBAL_STORAGE_KEY, value);
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("vi-VN", {
       hour: "2-digit",
@@ -46,188 +366,125 @@ const AIChatbot = () => {
     });
   };
 
-  const getBotResponse = (userMessage: string) => {
-    const msg = userMessage.toLowerCase();
-
-    if (msg.includes("buồn") || msg.includes("sad")) {
-      return {
-        text: "Dưới đây là một số bài hát buồn hay:",
-        songs: songDatabase.slice(0, 3),
-      };
-    }
-    if (
-      msg.includes("vui") ||
-      msg.includes("happy") ||
-      msg.includes("năng lượng")
-    ) {
-      return {
-        text: "Tuyệt vời! Đây là vài bài hát vui và đầy năng lượng:",
-        songs: songDatabase.slice(3, 6),
-      };
-    }
-    if (
-      msg.includes("tập trung") ||
-      msg.includes("học bài") ||
-      msg.includes("làm việc")
-    ) {
-      return {
-        text: "Đây là những bài hát phù hợp để tập trung:",
-        songs: [songDatabase[0], songDatabase[2], songDatabase[4]],
-      };
-    }
-    if (msg.includes("sơn tùng") || msg.includes("sontung")) {
-      return {
-        text: "Đây là một số bài hát của Sơn Tùng M-TP:",
-        songs: songDatabase.filter((s) => s.artist.includes("Sơn Tùng")),
-      };
-    }
-    return {
-      text: "Tôi hiểu rồi! Đây là một số bài hát bạn có thể thích:",
-      songs: [...songDatabase].sort(() => 0.5 - Math.random()).slice(0, 4),
-    };
-  };
-
-  const handleSend = () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now(),
-      text: input,
-      isBot: false,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsTyping(true);
-
-    setTimeout(() => {
-      const response = getBotResponse(input);
-
-      const botMessage: Message = {
-        id: Date.now() + 1,
-        text: response.text,
-        isBot: true,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
-
-      if (response.songs && response.songs.length > 0) {
-        response.songs.forEach((song, index) => {
-          setTimeout(
-            () => {
-              const songMessage: Message = {
-                id: Date.now() + index + 10,
-                text: `🎵 ${song.title} - ${song.artist}`,
-                isBot: true,
-                timestamp: new Date(),
-              };
-              setMessages((prev) => [...prev, songMessage]);
-            },
-            600 * (index + 1),
-          );
-        });
-      }
-
-      setIsTyping(false);
-    }, 800);
-  };
-
-  const handlePlaySong = (songTitle: string) => {
-    const foundSong = songDatabase.find((s) => songTitle.includes(s.title));
-    if (foundSong) {
-      const track = {
-        id: foundSong.id,
-        title: foundSong.title,
-        artist: foundSong.artist,
-        duration: 0,
-        audioUrl: mediaService.getStreamUrl(foundSong.id),
-      };
-      playTrack(track);
-    }
-  };
-
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-          <Bot size={28} className="text-black" />
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500">
+            <Bot size={28} className="text-black" />
+          </div>
+
+          <div>
+            <h1 className="text-3xl font-bold">Music Assistant</h1>
+            <p className="text-sm text-gray-400">AI gợi ý nhạc TuneVault</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold">Music Assistant</h1>
-          <p className="text-gray-400">AI hỗ trợ tìm nhạc cho bạn</p>
-        </div>
+
+        <button
+          onClick={clearChat}
+          className="flex items-center gap-2 rounded-full bg-[#282828] px-4 py-2 text-sm text-gray-400 transition hover:bg-[#3a3a3a] hover:text-white"
+        >
+          <Trash2 size={16} /> Xóa lịch sử
+        </button>
       </div>
 
-      <div className="bg-[#181818] rounded-2xl h-[520px] flex flex-col">
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex h-[580px] flex-col overflow-hidden rounded-3xl border border-[#282828] bg-[#181818]">
+        <div className="flex-1 space-y-6 overflow-y-auto p-6">
           {messages.map((msg) => (
             <div
               key={msg.id}
               className={`flex ${msg.isBot ? "justify-start" : "justify-end"}`}
             >
-              <div
-                className={`max-w-[75%] px-4 py-3 rounded-2xl ${msg.isBot ? "bg-[#282828] text-white" : "bg-green-600 text-white"}`}
-              >
-                <div className="flex items-start gap-2">
-                  {msg.isBot && (
-                    <Bot size={18} className="mt-1 flex-shrink-0" />
-                  )}
-                  {!msg.isBot && (
-                    <User size={18} className="mt-1 flex-shrink-0" />
-                  )}
-                  <div>
-                    <p>{msg.text}</p>
-                    {/* Hiển thị thời gian */}
-                    <p className="text-[10px] mt-1 opacity-60 text-right">
-                      {formatTime(msg.timestamp)}
-                    </p>
+              <div className="max-w-[82%]">
+                <div
+                  className={`rounded-2xl px-4 py-3 ${
+                    msg.isBot
+                      ? "bg-[#282828] text-white"
+                      : "bg-green-600 text-white"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {msg.isBot ? (
+                      <Bot
+                        size={20}
+                        className="mt-0.5 flex-shrink-0 text-green-400"
+                      />
+                    ) : (
+                      <User size={20} className="mt-0.5 flex-shrink-0" />
+                    )}
+
+                    {msg.text ? (
+                      <div
+                        className="leading-relaxed"
+                        dangerouslySetInnerHTML={{
+                          __html: formatMessageText(msg.text),
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-1 py-1">
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" />
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 delay-150" />
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 delay-300" />
+                      </div>
+                    )}
                   </div>
+
+                  {msg.songs && msg.songs.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {msg.songs.map((song) => (
+                        <button
+                          key={`${msg.id}-${song.id}`}
+                          onClick={() => handlePlaySong(song)}
+                          className="group flex w-full items-center justify-between rounded-xl bg-[#1f1f1f] px-4 py-2.5 text-left transition hover:bg-[#2a2a2a]"
+                        >
+                          <div>
+                            <p className="font-medium">{song.title}</p>
+                            <p className="text-sm text-gray-400">
+                              {song.artist}
+                            </p>
+                          </div>
+
+                          <Play
+                            size={18}
+                            className="text-green-400 opacity-0 transition group-hover:opacity-100"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {msg.text.includes("🎵") && (
-                  <button
-                    onClick={() => handlePlaySong(msg.text)}
-                    className="mt-2 flex items-center gap-2 text-sm bg-[#3a3a3a] hover:bg-[#4a4a4a] px-3 py-1 rounded-full"
-                  >
-                    <Play size={14} /> Phát ngay
-                  </button>
-                )}
+                <p className="mt-1 px-1 text-right text-[10px] text-gray-500">
+                  {msg.isStreaming
+                    ? "Đang trả lời..."
+                    : formatTime(msg.timestamp)}
+                </p>
               </div>
             </div>
           ))}
 
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-[#282828] px-4 py-3 rounded-2xl flex items-center gap-2">
-                <Bot size={18} />
-                <span className="text-gray-400">Đang suy nghĩ...</span>
-              </div>
-            </div>
-          )}
+          <div ref={bottomRef} />
         </div>
 
-        <div className="p-4 border-t border-[#282828]">
+        <div className="border-t border-[#282828] p-4">
           <div className="flex gap-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Hãy nói gì đó... (ví dụ: nhạc buồn, nhạc để học bài)"
-              className="flex-1 bg-[#282828] px-5 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Hãy nói gì đó với Music Assistant..."
+              className="flex-1 rounded-2xl bg-[#282828] px-5 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
             />
+
             <button
               onClick={handleSend}
-              className="bg-green-500 hover:bg-green-400 text-black p-3 rounded-full transition"
+              disabled={!input.trim() || isTyping}
+              className="rounded-2xl bg-green-500 p-3.5 text-black transition hover:bg-green-400 disabled:bg-gray-600"
             >
               <Send size={20} />
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            Thử hỏi: "nhạc buồn", "nhạc để tập trung", "bài hát của Sơn Tùng"
-          </p>
         </div>
       </div>
     </div>

@@ -22,7 +22,9 @@ const Queue = ({ onClose }: QueueProps) => {
             </button>
           )}
         </div>
-        <div className="p-6 text-center text-gray-400">Queue đang trống</div>
+        <div className="p-6 text-center text-gray-400">
+          Danh sách đang trống
+        </div>
       </div>
     );
   }
@@ -32,7 +34,7 @@ const Queue = ({ onClose }: QueueProps) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-[#282828] flex-shrink-0">
         <div>
-          <span className="font-semibold text-lg">Queue</span>
+          <span className="font-semibold text-lg">Danh sách phát</span>
           <span className="ml-2 text-sm text-gray-400">
             ({queue.length} bài)
           </span>

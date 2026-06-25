@@ -5,34 +5,71 @@ import { useAuthStore } from "../../stores/authStore";
 import toast from "react-hot-toast";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    loginIdentifier: "",
+    password: "",
+  });
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Vui lòng nhập đầy đủ email và mật khẩu");
+
+    const loginIdentifier = formData.loginIdentifier.trim().replace(/\s+/g, "");
+    const password = formData.password;
+
+    if (!loginIdentifier || !password) {
+      toast.error("Vui lòng nhập đầy đủ thông tin");
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await authService.login({ email, password });
+      const response: any = await authService.login({
+        loginIdentifier,
+        password,
+      });
 
-      if (response.success && response.data) {
-        setAuth(response.data.token, response.data.user);
-        toast.success(`Chào mừng trở lại, ${response.data.user.displayName}!`);
-        navigate("/home");
+      // Hỗ trợ cả 2 kiểu response:
+      // 1. Backend trả thẳng AuthResponseDto: { token, username, email, displayName }
+      // 2. API wrapper trả: { success, data: { token, user } }
+      const authData = response?.data ?? response;
+      const token = authData?.token;
+      const user = authData?.user ?? {
+        id: authData?.userId ?? authData?.id ?? "",
+        username: authData?.username ?? "",
+        email: authData?.email ?? loginIdentifier,
+        displayName:
+          authData?.displayName ?? authData?.username ?? "Người dùng",
+        avatarUrl: authData?.avatarUrl ?? "",
+      };
+
+      if (!token) {
+        throw new Error("Không nhận được token từ server");
       }
+
+      setAuth(token, user);
+      toast.success(`Chào mừng trở lại, ${user.displayName}!`);
+      navigate("/home");
     } catch (error: any) {
       const message =
         error.response?.data?.message ||
+        error.response?.data?.title ||
+        error.message ||
         "Đăng nhập thất bại. Vui lòng thử lại.";
+
       toast.error(message);
     } finally {
       setLoading(false);
@@ -42,7 +79,6 @@ const LoginPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#121212] px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="mb-10 text-center">
           <h1 className="text-5xl font-bold tracking-tighter text-green-500">
             TuneVault
@@ -54,14 +90,15 @@ const LoginPage = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
-                Email
+                Email hoặc Tên đăng nhập
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                name="loginIdentifier"
+                value={formData.loginIdentifier}
+                onChange={handleChange}
                 className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white placeholder:text-gray-500 focus:border-green-500 focus:outline-none"
-                placeholder="you@example.com"
+                placeholder="Email hoặc Tên đăng nhập"
                 required
               />
             </div>
@@ -72,8 +109,9 @@ const LoginPage = () => {
               </label>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
                 className="w-full rounded-lg border border-[#282828] bg-[#282828] px-4 py-3 text-white placeholder:text-gray-500 focus:border-green-500 focus:outline-none"
                 placeholder="••••••••"
                 required

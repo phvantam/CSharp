@@ -1,6 +1,9 @@
-import { Search, User, Menu } from "lucide-react";
+import { User, Menu, Bell, LogOut } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useNavigate } from "react-router-dom";
+import { mediaService } from "../../api";
+import { useNotificationStore } from "../../stores/notificationStore";
+import { useSidebarStore } from "../../stores/sidebarStore";
 
 interface TopbarProps {
   onMenuClick?: () => void;
@@ -8,63 +11,99 @@ interface TopbarProps {
 
 const Topbar = ({ onMenuClick }: TopbarProps) => {
   const { user, logout } = useAuthStore();
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
   const navigate = useNavigate();
+  const openMobileSidebar = useSidebarStore((state) => state.openMobileSidebar);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
+  const handleMenuClick = () => {
+    if (onMenuClick) onMenuClick();
+    else openMobileSidebar();
+  };
+
+  const getAvatarUrl = () => {
+    const avatarUrl = user?.avatarUrl;
+    if (!avatarUrl) return "";
+
+    if (avatarUrl.startsWith("http") || avatarUrl.startsWith("blob:")) {
+      return avatarUrl;
+    }
+
+    return mediaService.getFullMediaUrl(avatarUrl);
+  };
+
+  const avatarUrl = getAvatarUrl();
+
   return (
-    <div className="flex h-16 items-center justify-between border-b border-[#282828] bg-[#121212] px-4 md:px-6">
-      <div className="flex items-center gap-4">
-        {/* Nút menu cho mobile */}
-        <button
-          onClick={onMenuClick}
-          className="lg:hidden p-2 text-gray-400 hover:text-white"
-        >
-          <Menu size={22} />
-        </button>
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-[#282828] bg-[#121212]/95 px-3 backdrop-blur md:px-5 lg:px-6">
+      <button
+        onClick={handleMenuClick}
+        className="rounded-full p-2 text-gray-400 transition hover:bg-[#282828] hover:text-white lg:hidden"
+        title="Mở menu"
+      >
+        <Menu size={23} />
+      </button>
 
-        {/* Search Bar */}
-        <div className="relative w-64 md:w-96">
-          <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Bạn muốn nghe nhạc gì?"
-            className="w-full rounded-full bg-[#282828] py-2.5 pl-12 pr-4 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white"
-          />
-        </div>
-      </div>
+      <div className="min-w-0 flex-1" />
 
-      {/* User Section */}
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {user ? (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full bg-[#282828] px-3 py-1.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-600">
-                <User size={16} />
+          <>
+            <button
+              onClick={() => navigate("/notifications")}
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#282828] text-gray-300 transition hover:bg-[#3a3a3a] hover:text-white"
+              title="Thông báo"
+            >
+              <Bell size={19} />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => navigate("/profile")}
+              className="flex min-w-0 items-center gap-2 rounded-full bg-[#282828] px-1.5 py-1.5 pr-2 transition hover:bg-[#3a3a3a] sm:pr-3"
+              title="Trang cá nhân"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-600">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={user.displayName || "Avatar"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User size={17} className="text-gray-200" />
+                )}
               </div>
-              <span className="text-sm font-medium">{user.displayName}</span>
-            </div>
 
+              <span className="hidden max-w-[140px] truncate text-sm font-semibold sm:block lg:max-w-[180px]">
+                {user.displayName || user.email || "Người dùng"}
+              </span>
+            </button>
             <button
               onClick={handleLogout}
-              className="rounded-full bg-[#282828] px-4 py-1.5 text-sm font-medium hover:bg-[#3a3a3a]"
+              className="flex items-center gap-2 rounded-full bg-[#282828] px-3.5 py-2 text-sm font-semibold text-gray-300 transition hover:bg-red-500/10 hover:text-red-400 active:bg-red-500/20"
             >
-              Log out
+              <LogOut size={18} />
+              <span className="hidden sm:inline">Log out</span>
             </button>
-          </div>
+          </>
         ) : (
           <button
             onClick={() => navigate("/login")}
-            className="rounded-full bg-white px-6 py-2 text-sm font-semibold text-black hover:bg-gray-200"
+            className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-gray-200"
           >
             Log in
           </button>
         )}
       </div>
-    </div>
+    </header>
   );
 };
 

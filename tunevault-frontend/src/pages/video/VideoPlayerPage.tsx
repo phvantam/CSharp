@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useRef, useState, useEffect } from "react";
 import {
   ArrowLeft,
@@ -11,107 +11,43 @@ import {
   Repeat,
   PictureInPicture2,
 } from "lucide-react";
+import axiosInstance from "../../api/axiosInstance";
+import { usePlayerStore } from "../../stores/playerStore";
 
-// Mock video database
-const videoDatabase: Record<number, any> = {
-  1: {
-    id: 1,
-    title: "MV Nơi Này Có Anh",
-    artist: "Sơn Tùng M-TP",
-    videoUrl: "/videos/noinaycoanh.mp4",
-    thumbnail: "/image/noinaycoanh.png",
-  },
-  2: {
-    id: 2,
-    title: "MV See Tình",
-    artist: "Hoàng Thùy Linh",
-    videoUrl: "/videos/seetinh.mp4",
-    thumbnail: "/image/seetinh.jpg",
-  },
-  3: {
-    id: 3,
-    title: "MV Mang Tiền Về Cho Mẹ",
-    artist: "Đen",
-    videoUrl: "/videos/mangtienvechome.mp4",
-    thumbnail: "/image/mangtienvechome.jpg",
-  },
-  8: {
-    id: 8,
-    title: "MV Lạ Lùng",
-    artist: "Vũ.",
-    videoUrl: "/videos/lalung.mp4",
-    thumbnail: "/image/lalung.jpg",
-  },
-  10: {
-    id: 10,
-    title: "MV Sau Tất Cả",
-    artist: "ERIK",
-    videoUrl: "/videos/sautatca.mp4",
-    thumbnail: "/image/sautatca.jpg",
-  },
-  15: {
-    id: 15,
-    title: "MV Có Hẹn Với Thanh Xuân",
-    artist: "MONSTAR, GREY D",
-    videoUrl: "/videos/cohenvoithanhxuan.mp4",
-    thumbnail: "/image/cohenvoithanhxuan.jpg",
-  },
-  16: {
-    id: 16,
-    title: "MV Come My Way",
-    artist: "Sơn Tùng MTP",
-    videoUrl: "/videos/comemyway.mp4",
-    thumbnail: "/image/comemyway.jpg",
-  },
-  17: {
-    id: 17,
-    title: "MV Em Thua Cô Ta",
-    artist: "Min Quỳnh Anh",
-    videoUrl: "/videos/emthuacota.mp4",
-    thumbnail: "/image/emthuacota.jpg",
-  },
-  18: {
-    id: 18,
-    title: "MV Không Thể Say",
-    artist: "HIEUTHUHAI",
-    videoUrl: "/videos/khongthesay.mp4",
-    thumbnail: "/image/khongthesay.jpg",
-  },
-  19: {
-    id: 19,
-    title: "MV Waiting For You",
-    artist: "MONO",
-    videoUrl: "/videos/waitingforyou.mp4",
-    thumbnail: "/image/waitingforyou.jpg",
-  },
-  20: {
-    id: 20,
-    title: "MV Có Chàng Trai Viết Lên Cây",
-    artist: "Phan Mạnh Quỳnh",
-    videoUrl: "/videos/cochangtrai.mp4",
-    thumbnail: "/image/cochangtrai.jpg",
-  },
-  21: {
-    id: 21,
-    title: "MV Thiệp Hồng Sai Tên",
-    artist: "Nguyễn Thành Đạt",
-    videoUrl: "/videos/thiephongsaiten.mp4",
-    thumbnail: "/image/thiephongsaiten.jpg",
-  },
-  50: {
-    id: 50,
-    title: "MV Nơi Này Có Anh",
-    artist: "Sơn Tùng M-TP",
-    videoUrl: "/videos/noinaycoanh.mp4",
-    thumbnail: "/image/noinaycoanh.png",
-  },
+const API_ORIGIN = (
+  import.meta.env.VITE_API_URL || "http://localhost:5090/api"
+).replace(/\/api\/?$/, "");
+
+const toStaticUrl = (url?: string | null) => {
+  if (!url) return "";
+  if (url.startsWith("http") || url.startsWith("blob:")) return url;
+
+  // File upload/seed từ backend thường có dạng /media/...
+  if (url.startsWith("/media/")) {
+    return `${API_ORIGIN}${url}`;
+  }
+
+  return url;
+};
+
+type VideoMedia = {
+  id: number;
+  title: string;
+  artist: string;
+  videoUrl: string;
+  thumbnail: string;
 };
 
 const VideoPlayerPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pauseTrack = usePlayerStore((state) => state.pauseTrack);
+
+  const [video, setVideo] = useState<VideoMedia | null>(null);
+  const [error, setError] = useState("");
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -124,41 +60,130 @@ const VideoPlayerPage = () => {
   const [showControls, setShowControls] = useState(true);
 
   const videoId = Number(id);
-  const video = videoDatabase[videoId] || {
-    id: videoId,
-    title: "Video không tồn tại",
-    artist: "",
-    videoUrl: "",
-    thumbnail: "",
-  };
+  const routeState = location.state as any;
+  const stateMedia =
+    routeState?.media || routeState?.song || routeState || null;
+
+  // PlayerBar gửi event này khi người dùng muốn phát audio trong lúc đang ở trang video.
+  // Khi đó video sẽ pause để không bị phát chồng âm thanh.
+  useEffect(() => {
+    const handlePauseVideo = () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    window.addEventListener("tunevault:pause-video", handlePauseVideo);
+    return () => {
+      window.removeEventListener("tunevault:pause-video", handlePauseVideo);
+    };
+  }, []);
+
+  useEffect(() => {
+    const fetchVideo = async () => {
+      if (!videoId || Number.isNaN(videoId)) {
+        setError("Video không tồn tại");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const response = await axiosInstance.get(`/media/${videoId}`);
+        const payload = response.data?.data ?? response.data;
+
+        const videoPath =
+          payload?.videoUrl ||
+          payload?.videoFilePath ||
+          payload?.videoPath ||
+          (payload?.mediaType === "Video" ? payload?.filePath : "");
+
+        if (!videoPath) {
+          setError("Video không tồn tại");
+          setVideo(null);
+          return;
+        }
+
+        const artistName =
+          payload?.artistName ||
+          payload?.artist?.name ||
+          payload?.artist ||
+          payload?.artistDisplayName ||
+          stateMedia?.artistName ||
+          stateMedia?.artist ||
+          "Unknown Artist";
+
+        setVideo({
+          id: payload.mediaItemId ?? videoId,
+          title:
+            payload.videoTitle ||
+            payload.VideoTitle ||
+            stateMedia?.videoTitle ||
+            stateMedia?.title ||
+            payload.title ||
+            "Video",
+          artist: artistName,
+          videoUrl: toStaticUrl(videoPath),
+          thumbnail: toStaticUrl(
+            payload.thumbnailUrl || stateMedia?.thumbnailUrl,
+          ),
+        });
+      } catch (err) {
+        console.error("Fetch video error:", err);
+        setError("Video không tồn tại");
+        setVideo(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVideo();
+  }, [videoId, location.state]);
 
   // Xử lý metadata và time update
   useEffect(() => {
     const videoElement = videoRef.current;
-    if (!videoElement || !video.videoUrl) return;
+    if (!videoElement || !video?.videoUrl) return;
 
     const handleLoadedMetadata = () => {
-      setDuration(videoElement.duration);
+      setDuration(videoElement.duration || 0);
       setIsLoading(false);
     };
 
     const handleTimeUpdate = () => {
       if (videoElement.duration) {
-        const currentProgress =
-          (videoElement.currentTime / videoElement.duration) * 100;
-        setProgress(currentProgress);
+        setProgress((videoElement.currentTime / videoElement.duration) * 100);
         setCurrentTime(videoElement.currentTime);
       }
     };
 
+    const handlePlayEvent = () => {
+      pauseTrack();
+      setIsPlaying(true);
+    };
+    const handlePauseEvent = () => setIsPlaying(false);
+    const handleError = () => {
+      setError("Không tải được file video");
+      setIsLoading(false);
+    };
+
     videoElement.addEventListener("loadedmetadata", handleLoadedMetadata);
     videoElement.addEventListener("timeupdate", handleTimeUpdate);
+    videoElement.addEventListener("play", handlePlayEvent);
+    videoElement.addEventListener("pause", handlePauseEvent);
+    videoElement.addEventListener("error", handleError);
 
     return () => {
       videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
       videoElement.removeEventListener("timeupdate", handleTimeUpdate);
+      videoElement.removeEventListener("play", handlePlayEvent);
+      videoElement.removeEventListener("pause", handlePauseEvent);
+      videoElement.removeEventListener("error", handleError);
     };
-  }, [videoId]);
+  }, [video?.videoUrl, pauseTrack]);
 
   // Cập nhật loop
   useEffect(() => {
@@ -175,42 +200,27 @@ const VideoPlayerPage = () => {
     }, 3000);
   };
 
-  // Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const videoElement = videoRef.current;
-      if (!videoElement) return;
-
-      if (e.key === " " || e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        togglePlay();
-      }
-      if (e.key === "ArrowLeft") skip(-10);
-      if (e.key === "ArrowRight") skip(10);
-      if (e.key.toLowerCase() === "f") toggleFullscreen();
-      if (e.key.toLowerCase() === "m") handleMute();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isPlaying]);
-
-  const togglePlay = () => {
+  const togglePlay = async () => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
-    if (isPlaying) {
-      videoElement.pause();
-    } else {
-      videoElement.play();
+    try {
+      if (videoElement.paused) {
+        pauseTrack();
+        await videoElement.play();
+      } else {
+        videoElement.pause();
+      }
+      resetControlsTimeout();
+    } catch (err) {
+      console.error("Video play error:", err);
     }
-    setIsPlaying(!isPlaying);
-    resetControlsTimeout();
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const videoElement = videoRef.current;
-    if (!videoElement) return;
+    if (!videoElement || !videoElement.duration) return;
+
     const newProgress = parseFloat(e.target.value);
     videoElement.currentTime = (newProgress / 100) * videoElement.duration;
     setProgress(newProgress);
@@ -218,7 +228,8 @@ const VideoPlayerPage = () => {
 
   const skip = (seconds: number) => {
     const videoElement = videoRef.current;
-    if (!videoElement) return;
+    if (!videoElement || !videoElement.duration) return;
+
     videoElement.currentTime = Math.max(
       0,
       Math.min(videoElement.duration, videoElement.currentTime + seconds),
@@ -228,6 +239,7 @@ const VideoPlayerPage = () => {
   const changePlaybackRate = (rate: number) => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
+
     videoElement.playbackRate = rate;
     setPlaybackRate(rate);
   };
@@ -235,14 +247,20 @@ const VideoPlayerPage = () => {
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    if (videoRef.current) videoRef.current.volume = newVolume / 100;
+
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume / 100;
+      videoRef.current.muted = newVolume === 0;
+    }
   };
 
   const handleMute = () => {
-    if (videoRef.current) videoRef.current.muted = !videoRef.current.muted;
+    if (!videoRef.current) return;
+
+    videoRef.current.muted = !videoRef.current.muted;
   };
 
-  const toggleLoop = () => setIsLooping(!isLooping);
+  const toggleLoop = () => setIsLooping((prev) => !prev);
 
   const toggleFullscreen = () => {
     const videoElement = videoRef.current;
@@ -252,6 +270,7 @@ const VideoPlayerPage = () => {
   const togglePictureInPicture = async () => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
+
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
@@ -263,19 +282,50 @@ const VideoPlayerPage = () => {
     }
   };
 
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const videoElement = videoRef.current;
+      if (!videoElement) return;
+
+      if (e.key === " " || e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        togglePlay();
+      }
+
+      if (e.key === "ArrowLeft") skip(-10);
+      if (e.key === "ArrowRight") skip(10);
+      if (e.key.toLowerCase() === "f") toggleFullscreen();
+      if (e.key.toLowerCase() === "m") handleMute();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const formatTime = (time: number) => {
     const min = Math.floor(time / 60);
     const sec = Math.floor(time % 60);
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
-  if (!video.videoUrl) {
+  if (isLoading && !video) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-10 text-center">
-        <h2 className="text-2xl text-red-400 mb-4">Video không tồn tại</h2>
+      <div className="mx-auto max-w-5xl px-4 py-10 text-center">
+        <p className="text-gray-400">Đang tải video...</p>
+      </div>
+    );
+  }
+
+  if (error || !video?.videoUrl) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-10 text-center">
+        <h2 className="mb-4 text-2xl text-red-400">
+          {error || "Video không tồn tại"}
+        </h2>
         <button
           onClick={() => navigate(-1)}
-          className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-full text-white"
+          className="rounded-full bg-green-600 px-6 py-2 text-white hover:bg-green-500"
         >
           Quay lại
         </button>
@@ -284,21 +334,21 @@ const VideoPlayerPage = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4">
+    <div className="mx-auto max-w-6xl px-4">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 mb-6 text-gray-400 hover:text-white"
+        className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white"
       >
         <ArrowLeft size={20} /> Quay lại
       </button>
 
       <div
-        className="relative bg-black rounded-2xl overflow-hidden shadow-2xl group"
+        className="group relative overflow-hidden rounded-2xl bg-black shadow-2xl"
         onMouseMove={resetControlsTimeout}
         onMouseLeave={() => isPlaying && setShowControls(false)}
       >
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70">
             <div className="text-white">Đang tải video...</div>
           </div>
         )}
@@ -307,18 +357,21 @@ const VideoPlayerPage = () => {
           ref={videoRef}
           src={video.videoUrl}
           poster={video.thumbnail}
-          className="w-full aspect-video bg-black"
+          className="aspect-video w-full bg-black"
           onEnded={() => setIsPlaying(false)}
           onClick={togglePlay}
+          playsInline
         />
 
         {/* Controls */}
         <div
-          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4 transition-opacity duration-300 ${
+            showControls ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
         >
           {/* Progress Bar */}
-          <div className="flex items-center gap-3 mb-3 px-1">
-            <span className="text-white text-xs w-10 text-right">
+          <div className="mb-3 flex items-center gap-3 px-1">
+            <span className="w-10 text-right text-xs text-white">
               {formatTime(currentTime)}
             </span>
             <input
@@ -327,9 +380,9 @@ const VideoPlayerPage = () => {
               max="100"
               value={progress}
               onChange={handleSeek}
-              className="flex-1 accent-green-500 cursor-pointer"
+              className="flex-1 cursor-pointer accent-green-500"
             />
-            <span className="text-white text-xs w-10">
+            <span className="w-10 text-xs text-white">
               {formatTime(duration)}
             </span>
           </div>
@@ -339,13 +392,14 @@ const VideoPlayerPage = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => skip(-10)}
-                className="text-white hover:text-green-400 transition"
+                className="text-white transition hover:text-green-400"
               >
                 <RotateCcw size={20} />
               </button>
+
               <button
                 onClick={togglePlay}
-                className="w-11 h-11 flex items-center justify-center rounded-full bg-white text-black hover:bg-gray-200 transition"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black transition hover:bg-gray-200"
               >
                 {isPlaying ? (
                   <Pause size={24} />
@@ -353,13 +407,15 @@ const VideoPlayerPage = () => {
                   <Play size={24} className="ml-0.5" />
                 )}
               </button>
+
               <button
                 onClick={() => skip(10)}
-                className="text-white hover:text-green-400 transition"
+                className="text-white transition hover:text-green-400"
               >
                 <RotateCw size={20} />
               </button>
-              <div className="text-white ml-2">
+
+              <div className="ml-2 text-white">
                 <div className="font-semibold">{video.title}</div>
                 <div className="text-sm text-gray-400">{video.artist}</div>
               </div>
@@ -369,7 +425,7 @@ const VideoPlayerPage = () => {
               <select
                 value={playbackRate}
                 onChange={(e) => changePlaybackRate(parseFloat(e.target.value))}
-                className="bg-[#282828] text-white text-sm px-2 py-1 rounded border border-[#3a3a3a]"
+                className="rounded border border-[#3a3a3a] bg-[#282828] px-2 py-1 text-sm text-white"
               >
                 <option value={0.5}>0.5x</option>
                 <option value={0.75}>0.75x</option>
@@ -381,7 +437,11 @@ const VideoPlayerPage = () => {
 
               <button
                 onClick={toggleLoop}
-                className={`transition ${isLooping ? "text-green-500" : "text-white hover:text-green-400"}`}
+                className={`transition ${
+                  isLooping
+                    ? "text-green-500"
+                    : "text-white hover:text-green-400"
+                }`}
                 title="Lặp lại"
               >
                 <Repeat size={20} />
@@ -389,7 +449,7 @@ const VideoPlayerPage = () => {
 
               <button
                 onClick={togglePictureInPicture}
-                className="hover:text-green-400 transition"
+                className="transition hover:text-green-400"
                 title="Picture in Picture"
               >
                 <PictureInPicture2 size={20} />
@@ -413,7 +473,7 @@ const VideoPlayerPage = () => {
 
               <button
                 onClick={toggleFullscreen}
-                className="hover:text-green-400 transition"
+                className="transition hover:text-green-400"
               >
                 <Maximize size={20} />
               </button>
@@ -422,9 +482,7 @@ const VideoPlayerPage = () => {
         </div>
       </div>
 
-      <p className="text-center text-gray-500 mt-3 text-sm">
-        Space/K = Phát/Tạm dừng • ← → = Tua • F = Toàn màn hình • M = Tắt tiếng
-      </p>
+      <p className="mt-3 text-center text-sm text-gray-500"></p>
     </div>
   );
 };

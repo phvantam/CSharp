@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="96" fill="#181818"/>
+  <rect x="56" y="56" width="400" height="400" rx="76" fill="url(#g)"/>
+  <circle cx="256" cy="256" r="96" fill="#121212" opacity="0.78"/>
+  <circle cx="256" cy="256" r="28" fill="#22C55E"/>
+  <path d="M292 150v151.5c0 33.4-26.3 60.5-58.7 60.5-24.4 0-44.3-16.1-44.3-36 0-19.9 19.9-36 44.3-36 11.8 0 22.5 3.8 30.7 9.9V176l106-22v56l-78 16z" fill="white"/>
+  <text x="256" y="430" text-anchor="middle" fill="#A7F3D0" font-family="Arial, sans-serif" font-size="32" font-weight="700">TuneVault</text>
+  <defs>
+    <linearGradient id="g" x1="56" y1="56" x2="456" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22C55E" stop-opacity="0.9"/>
+      <stop offset="0.55" stop-color="#7C3AED" stop-opacity="0.78"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+</svg>
