@@ -44,6 +44,7 @@ interface PlayerState {
   playNext: (track: Track) => void;
   removeFromQueue: (index: number) => void;
   clearQueue: () => void;
+  resetPlayer: () => void;
   setRepeatMode: (mode: RepeatMode) => void;
   toggleShuffle: () => void;
 }
@@ -104,6 +105,7 @@ export const usePlayerStore = create<PlayerState>()(
       pauseTrack: () => set({ isPlaying: false }),
 
       setProgress: (progress) => set({ progress }),
+
       setPlaybackPosition: (currentTimeSeconds, durationSeconds) =>
         set({
           currentTimeSeconds: Number.isFinite(currentTimeSeconds)
@@ -120,6 +122,7 @@ export const usePlayerStore = create<PlayerState>()(
                 )
               : 0,
         }),
+
       setVolume: (volume) => set({ volume }),
 
       nextTrack: () => {
@@ -127,10 +130,12 @@ export const usePlayerStore = create<PlayerState>()(
 
         if (queue.length === 0) {
           set({
+            currentTrack: null,
             isPlaying: false,
             progress: 0,
             currentTimeSeconds: 0,
             durationSeconds: 0,
+            currentIndex: 0,
           });
           return;
         }
@@ -150,8 +155,6 @@ export const usePlayerStore = create<PlayerState>()(
         if (shuffle) {
           nextIndex = getRandomIndex(queue.length, currentIndex);
         } else if (nextIndex >= queue.length) {
-          // Repeat trong TuneVault dùng để lặp bài hiện tại, không lặp playlist.
-          // Khi bấm Next ở cuối danh sách thì dừng.
           set({
             isPlaying: false,
             progress: 0,
@@ -221,7 +224,21 @@ export const usePlayerStore = create<PlayerState>()(
 
       clearQueue: () => set({ queue: [], currentIndex: 0 }),
 
+      resetPlayer: () =>
+        set({
+          currentTrack: null,
+          isPlaying: false,
+          progress: 0,
+          currentTimeSeconds: 0,
+          durationSeconds: 0,
+          queue: [],
+          currentIndex: 0,
+          repeatMode: "off",
+          shuffle: false,
+        }),
+
       setRepeatMode: (mode) => set({ repeatMode: mode }),
+
       toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
     }),
     {

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { usePlayerStore } from "../../stores/playerStore";
+import { useAuthStore } from "../../stores/authStore";
 import Queue from "../player/Queue";
 import { mediaService } from "../../api";
 
@@ -32,10 +33,14 @@ const isEditableTarget = (target: EventTarget | null) => {
 const PlayerBar = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const restoredTrackIdRef = useRef<number | null>(null);
+  const lastRecordedPlayRef = useRef<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const isVideoPage = location.pathname.startsWith("/video/");
   const isNowPlayingPage = location.pathname.startsWith("/now-playing");
+
+  const authUserId = useAuthStore((state) => state.user?.id || null);
+  const authToken = useAuthStore((state) => state.token);
 
   const [showQueue, setShowQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -60,9 +65,30 @@ const PlayerBar = () => {
     previousTrack,
     setRepeatMode,
     toggleShuffle,
+    resetPlayer,
   } = usePlayerStore();
 
   const hasTrack = Boolean(currentTrack);
+
+  useEffect(() => {
+    const storageKey = "tunevault-player-user-id";
+
+    if (!authToken || !authUserId) {
+      resetPlayer();
+      localStorage.removeItem(storageKey);
+      lastRecordedPlayRef.current = null;
+      return;
+    }
+
+    const previousUserId = localStorage.getItem(storageKey);
+
+    if (previousUserId && previousUserId !== authUserId) {
+      resetPlayer();
+      lastRecordedPlayRef.current = null;
+    }
+
+    localStorage.setItem(storageKey, authUserId);
+  }, [authToken, authUserId, resetPlayer]);
 
   useEffect(() => {
     if (isNowPlayingPage) {
@@ -100,6 +126,7 @@ const PlayerBar = () => {
 
   useEffect(() => {
     restoredTrackIdRef.current = null;
+    lastRecordedPlayRef.current = null;
 
     const initialDuration = Number(
       savedDurationSeconds || currentTrack?.duration || 0,
@@ -142,11 +169,33 @@ const PlayerBar = () => {
     audio.volume = volume / 100;
 
     if (isPlaying) {
-      audio.play().catch(console.error);
+      const currentMediaId = currentTrack.id;
+
+      audio
+        .play()
+        .then(() => {
+          if (!authToken || !authUserId || !currentMediaId) return;
+
+          const recordKey = `${authUserId}:${currentMediaId}`;
+
+          if (lastRecordedPlayRef.current === recordKey) return;
+
+          lastRecordedPlayRef.current = recordKey;
+
+          import("../../api/playHistoryService")
+            .then(({ playHistoryService }) => {
+              playHistoryService.recordPlay(currentMediaId);
+            })
+            .catch((error) => {
+              lastRecordedPlayRef.current = null;
+              console.warn("[PlayerBar] Không thể ghi lịch sử phát:", error);
+            });
+        })
+        .catch(console.error);
     } else {
       audio.pause();
     }
-  }, [isPlaying, currentTrack, volume]);
+  }, [isPlaying, currentTrack, volume, authToken, authUserId]);
 
   const handleLoadedMetadata = () => {
     const audio = audioRef.current;
@@ -203,14 +252,6 @@ const PlayerBar = () => {
 
     nextTrack();
   };
-
-  useEffect(() => {
-    if (currentTrack?.id) {
-      import("../../api/playHistoryService").then(({ playHistoryService }) => {
-        playHistoryService.recordPlay(currentTrack.id);
-      });
-    }
-  }, [currentTrack?.id]);
 
   const seekAudioBy = (seconds: number) => {
     const audio = audioRef.current;
