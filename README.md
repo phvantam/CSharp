@@ -1,4 +1,4 @@
-# TuneVault - Nền tảng nghe nhạc và video trực tuyến
+# 🎵 TuneVault - Media Streaming Web Application
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![ASP.NET Core](https://img.shields.io/badge/ASP.NET_Core-10.0-512BD4?logo=dotnet&logoColor=white)](https://learn.microsoft.com/aspnet/core/)
@@ -13,12 +13,12 @@
 
 - **Tên dự án:** TuneVault
 - **Loại ứng dụng:** Media Streaming Web Application
-- **Môn học:** C# and .NET Development
+- **Môn học:** Ngôn ngữ lập trình C#
 - **Repository:** `https://github.com/phvantam/CSharp.git`
 - **Frontend:** React, TypeScript, Vite
 - **Backend:** ASP.NET Core Web API
 - **Database:** SQL Server, Entity Framework Core
-- **Kiến trúc:** Clean Architecture, CQRS, MediatR Pipeline
+- **Kiến trúc:** Clean Architecture
 - **Realtime:** SignalR Notification Hub
 - **AI:** OpenRouter API
 
@@ -39,10 +39,9 @@
 11. [Application Pipeline](#11-application-pipeline)
 12. [Màn hình frontend](#12-màn-hình-frontend)
 13. [Kiểm thử API](#13-kiểm-thử-api)
-14. [Hướng dẫn nộp bài](#14-hướng-dẫn-nộp-bài)
-15. [Lỗi thường gặp](#15-lỗi-thường-gặp)
-16. [Thành viên nhóm](#16-thành-viên-nhóm)
-17. [Tài liệu tham khảo](#17-tài-liệu-tham-khảo)
+14. [Lỗi thường gặp](#14-lỗi-thường-gặp)
+15. [Thành viên nhóm](#15-thành-viên-nhóm)
+16. [Tài liệu tham khảo](#16-tài-liệu-tham-khảo)
 
 ---
 
@@ -75,7 +74,7 @@ Backend được tổ chức theo **Clean Architecture** với bốn project ch�
 - Upload video.
 - Upload thumbnail.
 - Upload đồng thời audio, video và thumbnail trong cùng một request.
-- Cập nhật title, description, artist, album, genre, lyrics và visibility.
+- Cập nhật title, description, artist, album, lyrics và visibility.
 - Xóa media theo quyền sở hữu.
 - Lấy danh sách media trending.
 - Lấy danh sách media mới phát hành.
@@ -115,7 +114,6 @@ Backend được tổ chức theo **Clean Architecture** với bốn project ch�
 - Xem chi tiết album.
 - Tạo, sửa, xóa album.
 - Thêm hoặc xóa bài hát khỏi album.
-- Hỗ trợ một bài hát có nhiều nghệ sĩ thông qua bảng `MediaArtists`.
 
 ### 2.6 Share và Notification
 
