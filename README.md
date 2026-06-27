@@ -241,98 +241,84 @@ TuneVault.slnx
 
 ```text
 CSharp/
-├── database/
-│   └── TuneVault.sql
 │
-├── tunevault-backend/
-│   ├── TuneVault.slnx
+├── 📁 database/
+│   └── 📄 TuneVault.sql
+├── 📁 tunevault-backend/                              # Backend ASP.NET Core 8 (Clean Architecture)
+│   ├── 📄 TuneVault.slnx
 │   │
-│   ├── TuneVault.API/
-│   │   ├── Controllers/
-│   │   │   ├── AiController.cs
-│   │   │   ├── AlbumController.cs
-│   │   │   ├── ArtistController.cs
-│   │   │   ├── AuthController.cs
-│   │   │   ├── FavoriteController.cs
-│   │   │   ├── MediaController.cs
-│   │   │   ├── NotificationController.cs
-│   │   │   ├── PlayHistoryController.cs
-│   │   │   ├── PlaylistController.cs
-│   │   │   ├── ShareController.cs
-│   │   │   └── UserController.cs
-│   │   ├── wwwroot/
-│   │   │   └── media/
-│   │   │       ├── audio/
-│   │   │       ├── avatar/
-│   │   │       ├── image/
-│   │   │       └── video/
-│   │   └── Program.cs
+│   ├── 📁 TuneVault.Domain/                           # Layer 1: Domain
+│   │   ├── 📁 Entities/                               # MediaItem, Playlist, UserProfile, Artist, Album, MediaShare, Notification...
+│   │   └── 📁 Interfaces/                             # IRepository.cs, IUnitOfWork.cs
 │   │
-│   ├── TuneVault.Application/
-│   │   ├── AI/
-│   │   ├── Common/
-│   │   ├── DTOs/
-│   │   ├── Features/
-│   │   │   ├── Auth/
-│   │   │   ├── Media/
-│   │   │   ├── Playlist/
-│   │   │   ├── Share/
-│   │   │   ├── Notification/
-│   │   │   ├── Favorite/
-│   │   │   ├── User/
-│   │   │   ├── Artist/
-│   │   │   └── AI/
-│   │   ├── Interfaces/
-│   │   ├── PipelineBehaviors/
-│   │   └── MediatRMarker.cs
+│   ├── 📁 TuneVault.Application/                      # Layer 2: Application (Business Logic + MediatR)
+│   │   ├── 📁 Features/                               # Tách theo chức năng
+│   │   │   ├── 📁 Auth/
+│   │   │   ├── 📁 Media/                              # Upload, Update, Delete, Trending, New Releases, PlayMedia...
+│   │   │   ├── 📁 Playlist/                           # Create, Update, Delete, Add/Remove Track
+│   │   │   ├── 📁 Share/                              # Share Media + Share Playlist
+│   │   │   ├── 📁 User/                               # Follow/Unfollow, Update Profile
+│   │   │   ├── 📁 Favorite/
+│   │   │   ├── 📁 Notification/
+│   │   │   ├── 📁 PlayHistory/
+│   │   │   ├── 📁 Artist/
+│   │   │   └── 📁 AI/                                 # Chatbot + AI Recommendation
+│   │   ├── 📁 DTOs/                                   # Tất cả DTO theo module (Media, Playlist, Share, User...)
+│   │   ├── 📁 PipelineBehaviors/                      # AuthorizationBehavior + ValidationBehavior
+│   │   └── 📁 Interfaces/                             # IMediaService, IPlaylistService, IShareService, IUserService...
 │   │
-│   ├── TuneVault.Domain/
-│   │   ├── Entities/
-│   │   └── Interfaces/
+│   ├── 📁 TuneVault.Infrastructure/                   # Layer 3: Infrastructure
+│   │   ├── 📁 Persistence/                            # ApplicationDbContext + Configurations + SeedData
+│   │   ├── 📁 Repositories/                           # GenericRepository + UnitOfWork
+│   │   ├── 📁 Services/                               # MediaService, PlaylistService, ShareService, NotificationService...
+│   │   ├── 📁 Hubs/                                   # NotificationHub (SignalR)
+│   │   ├── 📁 Migrations/
+│   │   └── 📁 AI/                                     # OpenRouterService
 │   │
-│   └── TuneVault.Infrastructure/
-│       ├── AI/
-│       ├── Hubs/
-│       ├── Migrations/
-│       ├── Persistence/
-│       │   ├── Configurations/
-│       │   ├── ApplicationDbContext.cs
-│       │   ├── DesignTimeDbContextFactory.cs
-│       │   └── SeedData.cs
-│       ├── Repositories/
-│       ├── Services/
-│       └── DependencyInjection.cs
+│   └── 📁 TuneVault.API/                              # Layer 4: Web API
+│       ├── 📁 Controllers/                            # Auth, Media, Playlist, Share, Notification, Favorite, PlayHistory, Artist, Album...
+│       └── 📁 wwwroot/media/                          # Lưu file upload (audio, video, image, avatar, artist-avatar, playlists)
 │
-└── tunevault-frontend/
-    ├── public/
-    │   ├── audio/
-    │   ├── image/
-    │   └── videos/
-    ├── src/
-    │   ├── api/
-    │   │   ├── types/
-    │   │   ├── aiService.ts
-    │   │   ├── albumService.ts
-    │   │   ├── artistService.ts
-    │   │   ├── authService.ts
-    │   │   ├── axiosInstance.ts
-    │   │   ├── favoriteService.ts
-    │   │   ├── mediaService.ts
-    │   │   ├── notificationService.ts
-    │   │   ├── playHistoryService.ts
-    │   │   ├── playlistService.ts
-    │   │   ├── shareService.ts
-    │   │   └── userService.ts
-    │   ├── components/
-    │   ├── hooks/
-    │   ├── layouts/
-    │   ├── pages/
-    │   ├── stores/
-    │   ├── utils/
-    │   ├── App.tsx
-    │   └── main.tsx
-    ├── package.json
-    └── vite.config.ts
+├── 📁 tunevault-frontend/                             # Frontend React + TypeScript (Vite)
+│   ├── 📁 src/
+│   │   ├── 📁 api/                                    # Gọi API Backend
+│   │   │
+│   │   ├── 📁 components/                             # Component dùng chung
+│   │   │   ├── 📁 common/                             # ConfirmModal, ImageAdjustModal, NotificationToast
+│   │   │   ├── 📁 layout/                             # Sidebar, Topbar, PlayerBar
+│   │   │   ├── 📁 media/                              # AddToPlaylistModal, SongMenu
+│   │   │   ├── 📁 player/                             # Queue
+│   │   │   ├── 📁 playlist/                           # AddSongsToPlaylistModal
+│   │   │   └── 📁 share/                              # ShareModal
+│   │   │
+│   │   ├── 📁 hooks/                                  # useSignalR.ts
+│   │   ├── 📁 layouts/                                # MainLayout.tsx
+│   │   │
+│   │   ├── 📁 pages/                                  # Các trang chính
+│   │   │   ├── 📁 ai/                                 # AIChatbot.tsx
+│   │   │   ├── 📁 album/                              # AlbumDetailPage.tsx
+│   │   │   ├── 📁 artist/                             # ArtistDetailPage.tsx
+│   │   │   ├── 📁 auth/                               # LoginPage, RegisterPage
+│   │   │   ├── 📁 history/                            # RecentlyPlayedPage.tsx
+│   │   │   ├── 📁 home/                               # HomePage.tsx
+│   │   │   ├── 📁 library/                            # LibraryPage.tsx
+│   │   │   ├── 📁 media/                              # MediaDetailPage.tsx
+│   │   │   ├── 📁 notifications/                      # NotificationsPage.tsx
+│   │   │   ├── 📁 player/                             # NowPlayingPage.tsx
+│   │   │   ├── 📁 playlist/                           # PlaylistDetailPage.tsx
+│   │   │   ├── 📁 profile/                            # ProfilePage, PublicProfilePage
+│   │   │   ├── 📁 search/                             # SearchPage.tsx
+│   │   │   ├── 📁 share/                              # ShareInboxPage.tsx
+│   │   │   ├── 📁 upload/                             # UploadPage.tsx
+│   │   │   └── 📁 video/                              # VideoPlayerPage.tsx
+│   │   │
+│   │   ├── 📁 stores/                                 # Zustand State Management
+│   │   └── 📁 utils/                                  # formatCount.ts
+│   │
+│   ├── 📁 public/                                     # Static assets (audio, image, videos)
+│   └── 📄 package.json
+│
+└── 📄 README.md
 ```
 
 ---
@@ -392,8 +378,6 @@ Mở SQL Server Management Studio và chạy file:
 database/TuneVault.sql
 ```
 
-File SQL dùng để nộp kèm đồ án, bao gồm schema và dữ liệu mẫu.
-
 #### Cách 2: Dùng EF Core Migration
 
 ```bash
@@ -407,13 +391,13 @@ dotnet ef database update -p TuneVault.Infrastructure -s TuneVault.API -c Applic
 
 ### 7.1 Yêu cầu môi trường
 
+- Visual Studio Code hoặc Visual Studio
+- SQL Server hoặc SQL Server Express
 - Git
 - Node.js 18+ hoặc mới hơn
 - npm
 - .NET SDK hỗ trợ `net10.0`
-- SQL Server hoặc SQL Server Express
-- SQL Server Management Studio, nếu muốn import file SQL
-- Visual Studio Code hoặc Visual Studio
+
 
 ### 7.2 Clone repository
 
@@ -514,9 +498,6 @@ Ví dụ cấu hình:
   }
 }
 ```
-
-Không đưa API key thật lên GitHub. Khi nộp bài, nên thay bằng giá trị mẫu như `your_api_key`.
-
 ---
 
 ## 9. Tài khoản seed
@@ -761,36 +742,7 @@ Trả danh sách notification cho frontend
 
 ## 12. Màn hình frontend
 
-Các ảnh giao diện nên đặt trong thư mục:
 
-```text
-docs/screenshots/
-```
-
-Cấu trúc đề xuất:
-
-```text
-docs/
-└── screenshots/
-    ├── login.png
-    ├── register.png
-    ├── home.png
-    ├── search.png
-    ├── library.png
-    ├── upload.png
-    ├── playlist-detail.png
-    ├── media-detail.png
-    ├── album-detail.png
-    ├── artist-detail.png
-    ├── video-player.png
-    ├── now-playing.png
-    ├── share-inbox.png
-    ├── notifications.png
-    ├── profile.png
-    └── ai-chat.png
-```
-
-> Khi thêm ảnh vào repository, hãy giữ đúng tên file như bên dưới để GitHub hiển thị ảnh trực tiếp trong README.
 
 ### 12.1 Login / Register
 
