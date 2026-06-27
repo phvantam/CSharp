@@ -466,6 +466,7 @@ Nội dung:
 
 ```env
 VITE_API_URL=http://localhost:5090/api
+VITE_OPENROUTER_API_KEY=your_key
 ```
 
 Nếu không tạo `.env`, frontend vẫn dùng mặc định:
