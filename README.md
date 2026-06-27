@@ -42,7 +42,7 @@
 14. [Lỗi thường gặp](#14-lỗi-thường-gặp)
 15. [Thành viên nhóm](#15-thành-viên-nhóm)
 16. [Trích dẫn thư viện](#16-trích-dẫn-thư-viện)
-17. [Tài liệu tham khảo](#16-tài-liệu-tham-khảo)
+17. [Tài liệu tham khảo](#17-tài-liệu-tham-khảo)
 
 ---
 
