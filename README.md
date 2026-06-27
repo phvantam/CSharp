@@ -48,7 +48,7 @@
 
 ## 1. Giới thiệu
 
-**TuneVault** là ứng dụng nghe nhạc và xem video trực tuyến, được xây dựng theo định hướng giao diện giống các nền tảng streaming hiện đại (lấy ý tưởng từ [Sportify](https://open.spotify.com/) . Hệ thống hỗ trợ người dùng đăng ký, đăng nhập, upload audio/video, phát nhạc, xem MV, tạo playlist, quản lý album/nghệ sĩ, yêu thích bài hát, xem lịch sử nghe, chia sẻ media hoặc playlist cho người dùng khác và nhận thông báo theo thời gian thực.
+**TuneVault** là ứng dụng nghe nhạc và xem video trực tuyến, được xây dựng theo định hướng giao diện giống các nền tảng streaming hiện đại (lấy ý tưởng từ [Sportify](https://open.spotify.com/)) . Hệ thống hỗ trợ người dùng đăng ký, đăng nhập, upload audio/video, phát nhạc, xem MV, tạo playlist, quản lý album/nghệ sĩ, yêu thích bài hát, xem lịch sử nghe, chia sẻ media hoặc playlist cho người dùng khác và nhận thông báo theo thời gian thực.
 
 Backend được tổ chức theo **Clean Architecture** với bốn project chính: `Domain`, `Application`, `Infrastructure` và `API`. Các chức năng nghiệp vụ được triển khai theo hướng **CQRS** thông qua MediatR, kết hợp pipeline cho validation và authorization. Frontend sử dụng **React + TypeScript + Vite**, tách riêng phần gọi API, quản lý trạng thái và giao diện theo từng module.
 
