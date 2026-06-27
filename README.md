@@ -861,7 +861,7 @@ RequestSizeLimit
 | 6 | Huỳnh Tấn Phát | 3122410292 | Không tham gia làm bài | 0% |
 
 ---
-## 16. Trích dẫn thư viện,
+## 16. Trích dẫn thư viện
 
 Dự án có sử dụng một số thư viện, công cụ và tài liệu mã nguồn mở để hỗ trợ xây dựng frontend, backend, database, realtime notification và giao diện người dùng. Các thư viện được dùng đúng mục đích học tập và phát triển đồ án.
 
