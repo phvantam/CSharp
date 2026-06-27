@@ -47,7 +47,7 @@
 
 ## 1. Giới thiệu
 
-**TuneVault** là ứng dụng nghe nhạc và xem video trực tuyến, được xây dựng theo định hướng giao diện giống các nền tảng streaming hiện đại. Hệ thống hỗ trợ người dùng đăng ký, đăng nhập, upload audio/video, phát nhạc, xem MV, tạo playlist, quản lý album/nghệ sĩ, yêu thích bài hát, xem lịch sử nghe, chia sẻ media hoặc playlist cho người dùng khác và nhận thông báo theo thời gian thực.
+**TuneVault** là ứng dụng nghe nhạc và xem video trực tuyến, được xây dựng theo định hướng giao diện giống các nền tảng streaming hiện đại (lấy ý tưởng từ [Sportify](https://open.spotify.com/) . Hệ thống hỗ trợ người dùng đăng ký, đăng nhập, upload audio/video, phát nhạc, xem MV, tạo playlist, quản lý album/nghệ sĩ, yêu thích bài hát, xem lịch sử nghe, chia sẻ media hoặc playlist cho người dùng khác và nhận thông báo theo thời gian thực.
 
 Backend được tổ chức theo **Clean Architecture** với bốn project chính: `Domain`, `Application`, `Infrastructure` và `API`. Các chức năng nghiệp vụ được triển khai theo hướng **CQRS** thông qua MediatR, kết hợp pipeline cho validation và authorization. Frontend sử dụng **React + TypeScript + Vite**, tách riêng phần gọi API, quản lý trạng thái và giao diện theo từng module.
 
@@ -740,55 +740,7 @@ Trả danh sách notification cho frontend
 
 ---
 
-## 12. Màn hình frontend
-
-
-
-### 12.1 Login / Register
-
-| Login | Register |
-|---|---|
-| ![Login Page](docs/screenshots/login.png) | ![Register Page](docs/screenshots/register.png) |
-
-### 12.2 Trang chủ và tìm kiếm
-
-| Home | Search |
-|---|---|
-| ![Home Page](docs/screenshots/home.png) | ![Search Page](docs/screenshots/search.png) |
-
-### 12.3 Thư viện và upload
-
-| Library | Upload |
-|---|---|
-| ![Library Page](docs/screenshots/library.png) | ![Upload Page](docs/screenshots/upload.png) |
-
-### 12.4 Playlist, media, album và artist
-
-| Playlist Detail | Media Detail |
-|---|---|
-| ![Playlist Detail](docs/screenshots/playlist-detail.png) | ![Media Detail](docs/screenshots/media-detail.png) |
-
-| Album Detail | Artist Detail |
-|---|---|
-| ![Album Detail](docs/screenshots/album-detail.png) | ![Artist Detail](docs/screenshots/artist-detail.png) |
-
-### 12.5 Player, video và lyrics
-
-| Video Player | Now Playing |
-|---|---|
-| ![Video Player](docs/screenshots/video-player.png) | ![Now Playing](docs/screenshots/now-playing.png) |
-
-### 12.6 Share, notification và profile
-
-| Share Inbox | Notifications |
-|---|---|
-| ![Share Inbox](docs/screenshots/share-inbox.png) | ![Notifications](docs/screenshots/notifications.png) |
-
-| Profile | AI Chatbot |
-|---|---|
-| ![Profile Page](docs/screenshots/profile.png) | ![AI Chatbot](docs/screenshots/ai-chat.png) |
-
-### 12.7 Danh sách route chính
+## 12. Giao diện chính
 
 | Route | Trang |
 |---|---|
@@ -851,29 +803,10 @@ Bearer your_jwt_token
 
 ---
 
-## 14. Hướng dẫn nộp bài
 
-Nên đóng gói bài nộp theo cấu trúc:
+## 14. Lỗi thường gặp
 
-```text
-MSSV_TenSV_TuneVault.zip
-├── database/
-│   └── TuneVault.sql
-├── tunevault-backend/
-├── tunevault-frontend/
-├── README.md
-├── BaoCao_TuneVault.pdf
-├── ERD_TuneVault.png hoặc ERD_TuneVault.pdf
-├── Pipeline_TuneVault.png hoặc Pipeline_TuneVault.pdf
-├── Postman_Collection.json hoặc Swagger screenshots
-└── Video_Demo_Link.txt
-```
-
----
-
-## 15. Lỗi thường gặp
-
-### 15.1 Frontend không gọi được API
+### 14.1 Frontend không gọi được API
 
 Kiểm tra file `.env`:
 
@@ -887,17 +820,8 @@ Kiểm tra backend đã chạy ở:
 http://localhost:5090
 ```
 
-### 15.2 Backend không kết nối database
 
-Kiểm tra connection string:
-
-```json
-"DefaultConnection": "Server=EDDY\\\\SQLEXPRESS;Database=TuneVaultDB;Trusted_Connection=True;TrustServerCertificate=True;"
-```
-
-Nếu dùng SQL Server khác, thay `Server=...` cho đúng máy.
-
-### 15.3 Database chưa cập nhật migration
+### 14.2 Database chưa cập nhật migration
 
 Chạy:
 
@@ -912,48 +836,64 @@ dotnet ef migrations add SyncFinalDatabase -p TuneVault.Infrastructure -s TuneVa
 dotnet ef database update -p TuneVault.Infrastructure -s TuneVault.API -c ApplicationDbContext
 ```
 
-### 15.4 Warning MediatR License
+### 14.3 Upload file lớn bị lỗi
 
-Warning MediatR license trong môi trường development không ảnh hưởng đến việc chạy đồ án.
-
-### 15.5 Upload file lớn bị lỗi
-
-Backend đã cấu hình upload limit khoảng 200MB. Nếu vẫn lỗi, kiểm tra:
+Backend đã cấu hình upload limit 200MB. Nếu vẫn lỗi, kiểm tra:
 
 ```text
 MultipartBodyLengthLimit
 MaxRequestBodySize
 RequestSizeLimit
 ```
-
-### 15.6 Không thấy ảnh/audio/video
-
-Kiểm tra file được lưu trong:
-
-```text
-tunevault-backend/TuneVault.API/wwwroot/media
-```
-
-Backend phục vụ static file qua đường dẫn:
-
-```text
-/media
-```
-
 ---
 
-## 16. Thành viên nhóm
+## 15. Thành viên nhóm
 
-| Thành viên | MSSV | Vai trò |
+| STT | Thành viên | MSSV | Vai trò | Đóng góp |
+|---|---|---|---|---|
+| 1 | Phạm Văn Tâm | 3121410438 | Backend, Frontend, Database | 30% |
+| 2 | Trần Quang Duy | 3124410051 | Frontend  | 19% |
+| 3 | Hà Nguyễn Yến Vy | 3121410584 | Backend | 19% |
+| 4 | Tạ Ngọc Khánh Huy | 3124560035 | Backend | 16% |
+| 5 | Phạm Duy Phương | 3124410290 | Backend | 16% |
+| 6 | Huỳnh Tấn Phát | 3122410292 | Không tham gia làm bài | 0% |
+
+---
+## 16. Trích dẫn thư viện,
+
+Dự án có sử dụng một số thư viện, công cụ và tài liệu mã nguồn mở để hỗ trợ xây dựng frontend, backend, database, realtime notification và giao diện người dùng. Các thư viện được dùng đúng mục đích học tập và phát triển đồ án.
+
+### 16.1 Thư viện frontend
+
+| Thư viện / Công cụ | Mục đích sử dụng | Nguồn |
 |---|---|---|
-| Phạm Văn Tâm | Cập nhật MSSV | Backend / Frontend / Database / Document |
-| Thành viên 2 | Cập nhật MSSV | Frontend / UI |
-| Thành viên 3 | Cập nhật MSSV | Backend |
-| Thành viên 4 | Cập nhật MSSV | Testing / Document |
-| Thành viên 5 | Cập nhật MSSV | Database / API |
-| Thành viên 6 | Cập nhật MSSV | Report / Demo |
+| React | Xây dựng giao diện người dùng dạng SPA | https://react.dev |
+| React DOM | Render React app lên trình duyệt | https://react.dev |
+| Vite | Dev server và build tool cho frontend | https://vite.dev |
+| TypeScript | Bổ sung kiểu dữ liệu cho JavaScript | https://www.typescriptlang.org |
+| React Router DOM | Quản lý route phía client | https://reactrouter.com |
+| Axios | Gửi HTTP request từ frontend đến backend API | https://axios-http.com |
+| Zustand | Quản lý trạng thái như auth store, player store | https://zustand.docs.pmnd.rs |
+| Tailwind CSS | Xây dựng giao diện bằng utility classes | https://tailwindcss.com |
+| Lucide React | Sử dụng bộ icon trong giao diện | https://lucide.dev |
+| Framer Motion | Hỗ trợ animation trong UI | https://www.framer.com/motion |
+| React Hot Toast | Hiển thị toast notification | https://react-hot-toast.com |
+| Microsoft SignalR Client | Kết nối realtime notification với backend | https://learn.microsoft.com/aspnet/core/signalr |
 
----
+### 16.2 Thư viện backend
+
+| Thư viện / Công cụ | Mục đích sử dụng | Nguồn |
+|---|---|---|
+| ASP.NET Core Web API | Xây dựng REST API cho backend | https://learn.microsoft.com/aspnet/core |
+| Entity Framework Core | ORM để thao tác với SQL Server | https://learn.microsoft.com/ef/core |
+| EF Core SQL Server Provider | Kết nối EF Core với SQL Server | https://learn.microsoft.com/ef/core/providers/sql-server |
+| ASP.NET Core Identity | Quản lý user, password và xác thực | https://learn.microsoft.com/aspnet/core/security/authentication/identity |
+| JWT Bearer Authentication | Xác thực API bằng JWT token | https://learn.microsoft.com/aspnet/core/security/authentication |
+| MediatR | Triển khai CQRS, Command/Query và request pipeline | https://github.com/jbogard/MediatR |
+| FluentValidation | Validate dữ liệu đầu vào cho command/request | https://docs.fluentvalidation.net |
+| SignalR | Đẩy notification theo thời gian thực | https://learn.microsoft.com/aspnet/core/signalr |
+| Swashbuckle.AspNetCore | Tạo Swagger/OpenAPI document | https://github.com/domaindrivendev/Swashbuckle.AspNetCore |
+| TagLibSharp | Đọc metadata file audio/video | https://github.com/mono/taglib-sharp |
 
 ## 17. Tài liệu tham khảo
 
@@ -969,4 +909,3 @@ Backend phục vụ static file qua đường dẫn:
 
 ---
 
-*Cập nhật lần cuối: Tháng 6, 2026*
